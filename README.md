@@ -12,12 +12,12 @@ Hotkey                      | Description
 ----------------------------|:-----------------------------------------------
 **\<Ctrl\> + E**            | Indicate that you survived (escaped) the trial.
 **\<Ctrl\> + D**            | Indicate that you died in the trial.
-**\<Ctrl\> + 0**            | Indicate that Killer got 0 kills.
+**\<Ctrl\> + 0**            | Indicate that killer got 0 kills.
 **\<Ctrl\> + 1**            | Indicate that killer got 1 kills.
 **\<Ctrl\> + 2**            | Indicate that killer got 2 kills.
 **\<Ctrl\> + 3**            | Indicate that killer got 3 kills.
 **\<Ctrl\> + 4**            | Indicate that killer got 4 kills.
-**\<Ctrl\> + \<Enter\>**    | Submit info for this match. Once you submit, it cannot be edited.
+**\<Ctrl\> + \<Enter\>**    | Submit info (survival + kills) for this match. Once you submit, it cannot be edited.
 **\<F4\>**                  | Start/stop timer. You can use it to measure queue times or match duration.     
 
 **Important**: Hotkeys will only be accepted if you have focus on the DBD window or Stabd window. Trying to use the
