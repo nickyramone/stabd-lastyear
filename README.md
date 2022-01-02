@@ -2,7 +2,7 @@
 Stabd (short for "Stats by Daylight") is a tool that provides some basic stats for "Dead By Daylight" (DBD) players. 
 It is basically a hacked stripped version of the (discontinued) [LOOP (Lobby Simulator Companion)](https://github.com/nickyramone/LobbySimulatorCompanion) project.
 
-#How does it work?
+# How does it work?
 After starting this application, you will have a small panel always on top of your screen.
 Every time you finish a match, you can use hotkeys to provide results about that match. Stabd will then gather that
 information and aggregate it in different ways.
