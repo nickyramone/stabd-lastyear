@@ -31,20 +31,6 @@ Here are some sample screenshots:
 ![](docs/images/sample_3.png)
 
 
-# What are its main features?
-  * Server information: show where the server you are connecting to is located.
-  * Killer player information
-    * Keeps track of how many times you played against them, how many times you escaped, died, etc.
-    * Lets you rate this player as positive or negative and add personal notes. 
-  * Post-match information: 
-    * A summary of how long did the match last, how much time you spent in queue, etc.
-    * A summary of who were the top runners of the team, with their respective chase times.
-  * Aggregate stats:
-    * Periodic stats: a daily (or weekly, or monthly, or yearly) summary of the matches.
-    * Rolling stats: a summary of the last 50, 100, 250, 500 and 1000 matches.
-    * Copy stats to the clipboard
-  
-
 # How to install?
 1. Make sure you satisfy the system requirements:
     * Microsoft Windows (preferrably, Windows 10, which is what we test in)
