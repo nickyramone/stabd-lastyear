@@ -370,8 +370,9 @@ public class GameStateManager implements NativeKeyListener {
         }
 
         int keyCode = nativeEvent.getRawCode();
+        int modifiers = nativeEvent.getModifiers();
 
-        if (keyCode == KEYCODE__F4) {
+        if (keyCode == KEYCODE__F4 && modifiers == 0) {
             if (timerRunning) {
                 timerRunning = false;
                 fireEvent(GameEvent.TIMER_END);
