@@ -49,7 +49,6 @@ public class Boot {
         log.info("Initializing...");
         Factory.appProperties();
         initUi();
-
         startServices();
 //        Factory.pluginLoadUi().loadPlugin();
         SwingUtilities.invokeLater(() -> {
@@ -78,7 +77,7 @@ public class Boot {
 
     private static void startServices() throws IOException {
         Factory.loopDataService().start();
-        Factory.statsPanel().refreshStatsOnScreen();
+        SwingUtilities.invokeLater(() -> Factory.statsPanel().refreshStatsOnScreen());
 //        Factory.dbdLogMonitor().start();
     }
 
