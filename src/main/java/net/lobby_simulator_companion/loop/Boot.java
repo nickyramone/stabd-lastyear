@@ -1,8 +1,13 @@
 package net.lobby_simulator_companion.loop;
 
 import net.lobby_simulator_companion.loop.config.AppProperties;
+import net.lobby_simulator_companion.loop.domain.Connection;
+import net.lobby_simulator_companion.loop.service.*;
 import net.lobby_simulator_companion.loop.ui.MainWindow;
 import net.lobby_simulator_companion.loop.util.FileUtil;
+import org.apache.commons.lang3.StringUtils;
+import org.pcap4j.core.NotOpenException;
+import org.pcap4j.core.PcapNativeException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -12,6 +17,7 @@ import java.awt.*;
 import java.awt.image.BufferedImage;
 import java.io.File;
 import java.io.IOException;
+import java.net.InetAddress;
 import java.net.URI;
 import java.net.URISyntaxException;
 import java.nio.file.Path;
@@ -25,6 +31,8 @@ public class Boot {
 
     private static Logger log;
     private static MainWindow ui;
+
+    private static ConnectionManager connectionManager;
 
 
     public static void main(String[] args) {
@@ -49,8 +57,33 @@ public class Boot {
         log.info("Initializing...");
         Factory.appProperties();
         initUi();
+
+        log.info("Setting up network interface...");
+        if (Factory.settings().getBoolean("network.interface.autoload", false)) {
+            initServicesAndEnableUi();
+        } else {
+            Factory.networkInterfaceFrame().addPropertyChangeListener("event.dispose", evt -> {
+                try {
+                    initServicesAndEnableUi();
+                } catch (Exception e) {
+                    throw new RuntimeException(e);
+                }
+            });
+        }
+    }
+
+
+    private static void initServicesAndEnableUi() throws IOException, NotOpenException, PcapNativeException {
+        if (!Factory.settings().getBoolean("network.interface.enabled", true)) {
+            log.info("Lobby region detection is disabled.");
+        } else if (Sanity.checkPCap()) {
+            String inetAddrString = Factory.settings().get("network.interface.address");
+            if (!StringUtils.isBlank(inetAddrString)) {
+                InetAddress localAddr = InetAddress.getByName(inetAddrString);
+                initConnectionManager(localAddr);
+            }
+        }
         startServices();
-//        Factory.pluginLoadUi().loadPlugin();
         SwingUtilities.invokeLater(() -> {
             Factory.mainWindow().start();
             log.info(Factory.appProperties().get("app.name.short") + " is ready.");
@@ -63,9 +96,44 @@ public class Boot {
             ui = Factory.mainWindow();
             ui.addPropertyChangeListener(MainWindow.PROPERTY_EXIT_REQUEST, evt -> exitApplication(0));
         });
-//        doSanityCheck();
+        doSanityCheck();
         setupTray();
     }
+
+    private static void initConnectionManager(InetAddress localAddr) throws PcapNativeException, NotOpenException {
+        if (!Factory.appProperties().getBoolean("debug")) {
+            log.info("Starting net traffic sniffer...");
+            try {
+                connectionManager = new DedicatedServerConnectionManager(localAddr, new SnifferListener() {
+
+                    @Override
+                    public void notifyMatchConnect(Connection connection) {
+                        log.debug("Detected new connection: {}", connection);
+                        Factory.gameStateManager().fireEvent(GameEvent.CONNECTED_TO_LOBBY, connection.getRemoteAddr().getHostAddress());
+                    }
+
+                    public void notifyMatchDisconnect() {
+                        log.debug("disconnected");
+                        Factory.gameStateManager().fireEvent(GameEvent.DISCONNECTED);
+                    }
+
+                    @Override
+                    public void handleException(Exception e) {
+                        log.error("Fatal error while sniffing packets.", e);
+                        fatalErrorDialog("A fatal error occurred while processing connections.\nPlease, send us the log files.");
+                    }
+                });
+            } catch (InvalidNetworkInterfaceException e) {
+                fatalErrorDialog("The device you selected doesn't seem to exist. Double-check the IP you entered.");
+            }
+
+            // start connection manager thread
+            Thread thread = new Thread(() -> connectionManager.start());
+            thread.setDaemon(true);
+            thread.start();
+        }
+    }
+
 
     private static void doSanityCheck() {
         boolean performSanityCheck = Factory.settings().getBoolean("loop.feature.sanity_check", true);

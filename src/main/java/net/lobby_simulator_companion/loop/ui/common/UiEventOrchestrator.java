@@ -10,6 +10,7 @@ import net.lobby_simulator_companion.loop.util.event.SwingEventSupport;
 public class UiEventOrchestrator {
 
     public enum UiEvent {
+        SERVER_INFO_UPDATED,
         STRUCTURE_RESIZED,
         UPDATE_KILLER_PLAYER,
         UPDATE_KILLER_PLAYER_TITLE_EXTRA,

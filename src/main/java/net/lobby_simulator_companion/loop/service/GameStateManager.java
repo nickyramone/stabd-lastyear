@@ -73,7 +73,7 @@ public class GameStateManager implements NativeKeyListener {
     @Setter
     private int minMatchSeconds;
     @Getter
-    private Match currentMatch;
+    private Match currentMatch = new Match();
     private boolean resetMatchWait;
     private boolean timerRunning;
 
@@ -326,41 +326,41 @@ public class GameStateManager implements NativeKeyListener {
 
         if (keyCode == KEYCODE__0 && ctrlPressed) {
             killCount = 0;
-        }
-        else if (keyCode == KEYCODE__1 && ctrlPressed) {
+        } else if (keyCode == KEYCODE__1 && ctrlPressed) {
             killCount = 1;
-        }
-        else if (keyCode == KEYCODE__2 && ctrlPressed) {
+        } else if (keyCode == KEYCODE__2 && ctrlPressed) {
             killCount = 2;
-        }
-        else if (keyCode == KEYCODE__3 && ctrlPressed) {
+        } else if (keyCode == KEYCODE__3 && ctrlPressed) {
             killCount = 3;
-        }
-        else if (keyCode == KEYCODE__4 && ctrlPressed) {
+        } else if (keyCode == KEYCODE__4 && ctrlPressed) {
             killCount = 4;
-        }
-        else if (keyCode == KEYCODE__D && ctrlPressed) {
+        } else if (keyCode == KEYCODE__D && ctrlPressed) {
             escaped = false;
-        }
-        else if (keyCode == KEYCODE__E && ctrlPressed) {
+        } else if (keyCode == KEYCODE__E && ctrlPressed) {
             escaped = true;
         }
 
-        if (killCount != null || escaped != null) {
-            if (currentMatch == null) {
-                currentMatch = new Match();
-            }
-
-            if (killCount != null) {
-                currentMatch.setKillCount(killCount);
-            }
-
-            if (escaped != null) {
-                currentMatch.setEscaped(escaped);
-            }
-
-            fireEvent(GameEvent.MANUALLY_INPUT_MATCH_STATS, currentMatch);
+        if (killCount == null && escaped == null) {
+            return;
         }
+
+        if (currentMatch.getEscaped() != null && currentMatch.getEscaped().equals(escaped)) {
+            escaped = null;
+            currentMatch.setEscaped(null);
+        }
+        if (currentMatch.getKillCount() != null && currentMatch.getKillCount().equals(killCount)) {
+            killCount = null;
+            currentMatch.setKillCount(null);
+        }
+
+        if (escaped != null) {
+            currentMatch.setEscaped(escaped);
+        }
+        if (killCount != null) {
+            currentMatch.setKillCount(killCount);
+        }
+
+        fireEvent(GameEvent.MANUALLY_INPUT_MATCH_STATS, currentMatch);
     }
 
     @Override
@@ -376,8 +376,7 @@ public class GameStateManager implements NativeKeyListener {
             if (timerRunning) {
                 timerRunning = false;
                 fireEvent(GameEvent.TIMER_END);
-            }
-            else {
+            } else {
                 timerRunning = true;
                 fireEvent(GameEvent.TIMER_START);
             }
@@ -391,13 +390,23 @@ public class GameStateManager implements NativeKeyListener {
     }
 
     private void updateAggregateStatsWithMatchResults() {
-        if (currentMatch != null) {
-            dataService.getStats().addMatchStats(currentMatch);
-            dataService.getMatchLog().add(currentMatch);
-            dataService.notifyChange();
-            currentMatch = null;
-            fireEvent(GameEvent.UPDATED_STATS);
+        Boolean escaped = currentMatch.getEscaped();
+        Integer killCount = currentMatch.getKillCount();
+
+        if (escaped == null && killCount == null) {
+            return;
         }
+
+        if (escaped != null && killCount != null && ((escaped && killCount == 4) || (!escaped && killCount == 0))) {
+            // invalid input
+            return;
+        }
+
+        dataService.getStats().addMatchStats(currentMatch);
+        dataService.getMatchLog().add(currentMatch);
+        dataService.notifyChange();
+        currentMatch = new Match();
+        fireEvent(GameEvent.UPDATED_STATS);
     }
 
 }

@@ -5,10 +5,7 @@ import lombok.extern.slf4j.Slf4j;
 import net.lobby_simulator_companion.loop.config.AppProperties;
 import net.lobby_simulator_companion.loop.config.LoopGsonFactory;
 import net.lobby_simulator_companion.loop.config.Settings;
-import net.lobby_simulator_companion.loop.repository.ExtremeIpDao;
-import net.lobby_simulator_companion.loop.repository.LoopRepository;
-import net.lobby_simulator_companion.loop.repository.ServerDao;
-import net.lobby_simulator_companion.loop.repository.SteamProfileDao;
+import net.lobby_simulator_companion.loop.repository.*;
 import net.lobby_simulator_companion.loop.service.DbdLogMonitor;
 import net.lobby_simulator_companion.loop.service.GameStateManager;
 import net.lobby_simulator_companion.loop.service.LoopDataService;
@@ -18,14 +15,7 @@ import net.lobby_simulator_companion.loop.service.log_processing.impl.KillerLogP
 import net.lobby_simulator_companion.loop.service.log_processing.impl.MainLogProcessor;
 import net.lobby_simulator_companion.loop.service.log_processing.impl.RealmMapLogProcessor;
 import net.lobby_simulator_companion.loop.service.plugin.PluginManager;
-import net.lobby_simulator_companion.loop.ui.KillerPanel;
-import net.lobby_simulator_companion.loop.ui.MainWindow;
-import net.lobby_simulator_companion.loop.ui.MatchPanel;
-import net.lobby_simulator_companion.loop.ui.PeriodAggregateStatsPanel;
-import net.lobby_simulator_companion.loop.ui.RollingAggregateStatsPanel;
-import net.lobby_simulator_companion.loop.ui.ServerPanel;
-import net.lobby_simulator_companion.loop.ui.StatsPanel;
-import net.lobby_simulator_companion.loop.ui.SurvivalInputPanel;
+import net.lobby_simulator_companion.loop.ui.*;
 import net.lobby_simulator_companion.loop.ui.common.UiEventOrchestrator;
 import net.lobby_simulator_companion.loop.ui.startup.PluginLoadUi;
 import net.lobby_simulator_companion.loop.util.event.EventSupport;
@@ -107,8 +97,8 @@ public final class Factory {
 
     public static ServerDao serverDao() {
         return getInstance(ServerDao.class, () -> {
-            String serviceUrlPrefix = appProperties().get("dao.server.extreme_ip.url_prefix");
-            return new ExtremeIpDao(serviceUrlPrefix);
+            String serviceUrlPrefix = appProperties().get("dao.server.ipwhois.url_prefix");
+            return new IpWhoIsClient(serviceUrlPrefix);
         });
     }
 
@@ -164,6 +154,10 @@ public final class Factory {
     private static ChaseEventManager chaseEventManager() {
         return getInstance(ChaseEventManager.class,
                 () -> new ChaseEventManager(dbdLogMonitor()));
+    }
+
+    public static NetworkInterfaceFrame networkInterfaceFrame() {
+        return getInstance(NetworkInterfaceFrame.class, unchecked(() -> new NetworkInterfaceFrame(settings())));
     }
 
     public static MainWindow mainWindow() {

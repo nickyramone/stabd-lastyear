@@ -18,7 +18,7 @@ public class TestBoot {
         Boot.main(new String[]{});
 
         invokeLater(() -> unchecked(() ->
-                new DebugPanel(Factory.dbdLogMonitor(), Factory.loopDataService())).get());
+                new DebugPanel(Factory.dbdLogMonitor(), Factory.loopDataService(), Factory.gameStateManager())).get());
     }
 
 }

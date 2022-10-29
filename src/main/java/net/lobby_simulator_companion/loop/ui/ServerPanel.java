@@ -1,5 +1,6 @@
 package net.lobby_simulator_companion.loop.ui;
 
+import lombok.Getter;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import net.lobby_simulator_companion.loop.config.AppProperties;
@@ -64,6 +65,7 @@ public class ServerPanel extends JPanel {
     private JLabel summaryLabel;
     private JLabel geoLocationLabel;
     private NameValueInfoPanel detailsPanel;
+    @Getter
     private Server server;
 
 
@@ -83,6 +85,8 @@ public class ServerPanel extends JPanel {
     private void initEventListeners() {
         gameStateManager.registerListener(GameEvent.CONNECTED_TO_LOBBY,
                 evt -> updateServerIpAddress((String) evt.getValue()));
+        gameStateManager.registerListener(GameEvent.DISCONNECTED,
+                evt -> refreshClear());
     }
 
     private void draw() {
@@ -163,9 +167,11 @@ public class ServerPanel extends JPanel {
     private void updateServerIpAddress(String ipAddress) {
         new Thread(() -> {
             try {
-                server = serverDao.getByIpAddress(ipAddress);
-                SwingUtilities.invokeLater(() -> refreshServerOnScreen(this.server));
-
+                Server newServerInfo = serverDao.getByIpAddress(ipAddress);
+                SwingUtilities.invokeLater(() -> {
+                    refreshServerOnScreen(newServerInfo);
+                    uiEventOrchestrator.fireEvent(UiEventOrchestrator.UiEvent.SERVER_INFO_UPDATED, newServerInfo);
+                });
             } catch (IOException e) {
                 log.error("Failed to retrieve server information.", e);
             }
@@ -186,7 +192,7 @@ public class ServerPanel extends JPanel {
         setServerValue(InfoType.PROVIDER, server.getIsp());
     }
 
-    private void refreshClear() {
+    public void refreshClear() {
         server = null;
         summaryLabel.setText(null);
         geoLocationLabel.setVisible(false);
@@ -194,6 +200,7 @@ public class ServerPanel extends JPanel {
         setServerValue(InfoType.REGION, null);
         setServerValue(InfoType.CITY, null);
         setServerValue(InfoType.PROVIDER, null);
+        uiEventOrchestrator.fireEvent(UiEventOrchestrator.UiEvent.SERVER_INFO_UPDATED);
     }
 
     private void setServerValue(InfoType type, String value) {

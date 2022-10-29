@@ -4,6 +4,7 @@ import lombok.extern.slf4j.Slf4j;
 import net.lobby_simulator_companion.loop.config.AppProperties;
 import net.lobby_simulator_companion.loop.config.Settings;
 import net.lobby_simulator_companion.loop.domain.Player;
+import net.lobby_simulator_companion.loop.domain.Server;
 import net.lobby_simulator_companion.loop.domain.stats.Match;
 import net.lobby_simulator_companion.loop.service.GameEvent;
 import net.lobby_simulator_companion.loop.service.GameStateManager;
@@ -11,6 +12,7 @@ import net.lobby_simulator_companion.loop.service.LoopDataService;
 import net.lobby_simulator_companion.loop.ui.common.*;
 import net.lobby_simulator_companion.loop.util.Stopwatch;
 import net.lobby_simulator_companion.loop.util.TimeUtil;
+import org.apache.commons.lang3.StringUtils;
 
 import javax.swing.*;
 import javax.swing.border.Border;
@@ -25,6 +27,7 @@ import java.util.LinkedList;
 import java.util.Optional;
 import java.util.Queue;
 
+import static java.lang.Boolean.TRUE;
 import static net.lobby_simulator_companion.loop.ui.common.ResourceFactory.Icon;
 import static net.lobby_simulator_companion.loop.ui.common.UiConstants.WIDTH__LOOP_MAIN;
 import static net.lobby_simulator_companion.loop.ui.common.UiEventOrchestrator.UiEvent;
@@ -83,9 +86,16 @@ public class MainWindow extends JFrame {
     private Timer genericTimer;
 
     private JPanel titleBar;
+    private JPanel titleBarInputContainer;
+    private JLabel titleBarSurvivalInputLabel;
+    private JLabel titleBarSurvivalInputEmptyLabel;
+    private JLabel titleBarSurvivalInputIconLabel;
+    private JLabel titleBarKillsInputLabel;
+    private JLabel titleBarKillsInputValueLabel;
     private JLabel appLabel;
     private JPanel messagePanel;
     private JLabel lastConnMsgLabel;
+    private JLabel titleBarServerLabel;
     private JLabel connStatusLabel;
     private JLabel killerSkullIcon;
     private JPanel killerInfoContainer;
@@ -99,6 +109,8 @@ public class MainWindow extends JFrame {
     private JLabel titleBarMinimizeLabel;
     private JPanel detailPanel;
     private boolean detailPanelSavedVisibilityState;
+
+//    private Match match;
 
 
     public MainWindow(Settings settings, AppProperties appProperties, LoopDataService loopDataService,
@@ -136,7 +148,8 @@ public class MainWindow extends JFrame {
     public void start() {
         restorePanels();
 //        showStatus(MSG__STATUS__DISCONNECTED);
-        refreshMatchStatsOnTitleBar(new Match());
+//        this.match = new Match();
+        refreshMatchInputOnTitleBar(new Match());
         initGameStateListeners(gameStateManager, uiEventOrchestrator);
     }
 
@@ -149,11 +162,12 @@ public class MainWindow extends JFrame {
         gameStateManager.registerListener(GameEvent.MATCH_STARTED, evt -> handleMatchStart());
         gameStateManager.registerListener(GameEvent.MATCH_ENDED, evt -> handleMatchEnd((Match) evt.getValue()));
         gameStateManager.registerListener(GameEvent.NEW_KILLER_PLAYER, evt -> refreshKillerPlayerOnTitleBar((Player) evt.getValue()));
-        gameStateManager.registerListener(GameEvent.MANUALLY_INPUT_MATCH_STATS, evt -> refreshMatchStatsOnTitleBar((Match) evt.getValue()));
-        gameStateManager.registerListener(GameEvent.UPDATED_STATS, evt -> handleUpdatedStats());
+        gameStateManager.registerListener(GameEvent.MANUALLY_INPUT_MATCH_STATS, evt -> handleMatchManualInput((Match) evt.getValue()));
+        gameStateManager.registerListener(GameEvent.UPDATED_STATS, evt -> refreshMatchInputOnTitleBar(new Match()));
         gameStateManager.registerListener(GameEvent.TIMER_START, evt -> handleTimerStart());
         gameStateManager.registerListener(GameEvent.TIMER_END, evt -> handleTimerEnd());
 
+        uiEventOrchestrator.registerListener(UiEvent.SERVER_INFO_UPDATED, evt -> handleServerInfoUpdated((Server) evt.getValue()));
         uiEventOrchestrator.registerListener(UiEvent.UPDATE_KILLER_PLAYER_TITLE_EXTRA,
                 evt -> refreshKillerPlayerSubtitleOnScreen((String) evt.getValue()));
         uiEventOrchestrator.registerListener(UiEvent.STRUCTURE_RESIZED, evt -> pack());
@@ -225,7 +239,7 @@ public class MainWindow extends JFrame {
             }
         });
 
-//        detailPanel.add(serverPanel);
+        detailPanel.add(serverPanel);
 //        detailPanel.add(killerPanel);
 //        detailPanel.add(matchPanel);
         detailPanel.add(statsPanel);
@@ -270,10 +284,53 @@ public class MainWindow extends JFrame {
         separatorLabel.setForeground(Color.WHITE);
         separatorLabel.setFont(font);
 
+        titleBarServerLabel = new JLabel();
+        titleBarServerLabel.setBorder(border);
+        titleBarServerLabel.setForeground(Color.CYAN);
+        titleBarServerLabel.setFont(font);
+        titleBarServerLabel.setVisible(false);
+
         connStatusLabel = new JLabel();
         connStatusLabel.setBorder(border);
         connStatusLabel.setForeground(Color.WHITE);
         connStatusLabel.setFont(font);
+
+        titleBarSurvivalInputLabel  = new JLabel("Survived?");
+        titleBarSurvivalInputLabel.setBorder(border);
+        titleBarSurvivalInputLabel.setForeground(Color.WHITE);
+        titleBarSurvivalInputLabel.setFont(font);
+
+        titleBarSurvivalInputEmptyLabel  = new JLabel("-");
+        titleBarSurvivalInputEmptyLabel.setBorder(border);
+        titleBarSurvivalInputEmptyLabel.setForeground(Color.BLUE);
+        titleBarSurvivalInputEmptyLabel.setFont(font);
+
+        titleBarSurvivalInputIconLabel  = new JLabel();
+        titleBarSurvivalInputIconLabel.setBorder(border);
+//        titleBarSurvivalInputIconLabel.setForeground(Color.WHITE);
+//        titleBarSurvivalInputIconLabel.setFont(font);
+        titleBarSurvivalInputIconLabel.setVisible(false);
+
+
+        titleBarKillsInputLabel  = new JLabel("# of kills:");
+        titleBarKillsInputLabel.setBorder(border);
+        titleBarKillsInputLabel.setForeground(Color.WHITE);
+        titleBarKillsInputLabel.setFont(font);
+
+        titleBarKillsInputValueLabel  = new JLabel("-");
+        titleBarKillsInputValueLabel.setBorder(border);
+        titleBarKillsInputValueLabel.setForeground(Color.BLUE);
+        titleBarKillsInputValueLabel.setFont(font);
+
+        titleBarInputContainer = new JPanel(new FlowLayout(FlowLayout.LEFT, 0, 0));
+//        titleBarInputContainer.add(connStatusLabel);
+        titleBarInputContainer.setBackground(UiConstants.COLOR__STATUS_BAR__DISCONNECTED__BG);
+        titleBarInputContainer.setBorder(NO_BORDER);
+        titleBarInputContainer.add(titleBarSurvivalInputLabel);
+        titleBarInputContainer.add(titleBarSurvivalInputEmptyLabel);
+        titleBarInputContainer.add(titleBarSurvivalInputIconLabel);
+        titleBarInputContainer.add(titleBarKillsInputLabel);
+        titleBarInputContainer.add(titleBarKillsInputValueLabel);
 
         killerSkullIcon = new JLabel();
         killerSkullIcon.setBorder(border);
@@ -314,12 +371,12 @@ public class MainWindow extends JFrame {
 
         connTimerLabel = new JLabel();
         connTimerLabel.setBorder(border);
-        connTimerLabel.setForeground(Color.WHITE);
+        connTimerLabel.setForeground(Color.CYAN);
         connTimerLabel.setFont(font);
         displayQueueTimer(0);
 
         titleBarTimerContainer = new JPanel(new FlowLayout(FlowLayout.LEFT, 0, 0));
-        titleBarTimerContainer.setBackground(UiConstants.COLOR__STATUS_BAR__CONNECTED__BG);
+        titleBarTimerContainer.setBackground(UiConstants.COLOR__STATUS_BAR__DISCONNECTED__BG);
         titleBarTimerContainer.add(timerSeparatorLabel);
         titleBarTimerContainer.add(connTimerLabel);
         titleBarTimerContainer.setVisible(false);
@@ -328,7 +385,9 @@ public class MainWindow extends JFrame {
         connMsgPanel.setBackground(UiConstants.COLOR__STATUS_BAR__DISCONNECTED__BG);
         connMsgPanel.add(appLabel);
         connMsgPanel.add(separatorLabel);
-        connMsgPanel.add(connStatusLabel);
+        connMsgPanel.add(titleBarServerLabel);
+//        connMsgPanel.add(connStatusLabel);
+        connMsgPanel.add(titleBarInputContainer);
         connMsgPanel.add(killerInfoContainer);
         connMsgPanel.add(titleBarTimerContainer);
         MouseDragListener mouseDragListener = new MouseDragListener(this);
@@ -467,13 +526,16 @@ public class MainWindow extends JFrame {
     private void handleServerDisconnect() {
         disconnectButton.setVisible(false);
         queueTimer.stop();
-        displayQueueTimer(0);
+//        displayQueueTimer(0);
         changeTitleBarColor(UiConstants.COLOR__STATUS_BAR__DISCONNECTED__BG, Color.WHITE);
-        connStatusLabel.setText("Idle");
-        connStatusLabel.setVisible(true);
+//        handleUpdatedStats();
+//        connStatusLabel.setText("Idle");
+//        connStatusLabel.setVisible(true);
         killerInfoContainer.setVisible(false);
-        titleBarTimerContainer.setVisible(false);
+//        titleBarTimerContainer.setVisible(false);
         messagePanel.setVisible(false);
+//        serverPanel.refreshClear();
+
         pack();
     }
 
@@ -489,10 +551,15 @@ public class MainWindow extends JFrame {
         changeTitleBarColor(UiConstants.COLOR__STATUS_BAR__CONNECTED__BG, Color.WHITE);
         disconnectButton.setVisible(true);
         queueTimer.stop();
-        connStatusLabel.setText(MSG__STATUS__CONNECTED);
+//        connStatusLabel.setText(MSG__STATUS__CONNECTED);
         survivalInputPanel.setVisible(false);
         messagePanel.setVisible(false);
         pack();
+    }
+
+    private void handleServerInfoUpdated(Server server) {
+        System.out.println("server: " + server);
+        refreshServerInfoOnTitleBar(server);
     }
 
     private void handleMapGeneration() {
@@ -531,7 +598,7 @@ public class MainWindow extends JFrame {
         genericTimer.restart();
         genericStopwatch.reset();
         genericStopwatch.start();
-        changeTitleBarColor(UiConstants.COLOR__STATUS_BAR__CONNECTED__BG, Color.WHITE);
+//        changeTitleBarColor(UiConstants.COLOR__STATUS_BAR__CONNECTED__BG, Color.WHITE);
         titleBarTimerContainer.setVisible(true);
     }
 
@@ -539,13 +606,12 @@ public class MainWindow extends JFrame {
         genericStopwatch.stop();
         displayGenericTimer(genericStopwatch.getSeconds());
         genericTimer.stop();
-        changeTitleBarColor(UiConstants.COLOR__STATUS_BAR__DISCONNECTED__BG, Color.WHITE);
+//        changeTitleBarColor(UiConstants.COLOR__STATUS_BAR__DISCONNECTED__BG, Color.WHITE);
     }
 
-    private void handleUpdatedStats() {
-        refreshMatchStatsOnTitleBar(new Match());
+    private void handleMatchManualInput(Match match) {
+        refreshMatchInputOnTitleBar(match);
     }
-
 
     private void changeTitleBarColor(Color bgColor, Color fgColor) {
         Queue<Component> queue = new LinkedList<>();
@@ -558,10 +624,11 @@ public class MainWindow extends JFrame {
                 JPanel panel = (JPanel) c;
                 panel.setBackground(bgColor);
                 queue.addAll(Arrays.asList(panel.getComponents()));
-            } else if (c instanceof JLabel) {
-                JLabel label = (JLabel) c;
-                label.setForeground(fgColor);
             }
+//            else if (c instanceof JLabel) {
+//                JLabel label = (JLabel) c;
+//                label.setForeground(fgColor);
+//            }
         }
 
         appLabel.setForeground(Color.YELLOW);
@@ -580,12 +647,47 @@ public class MainWindow extends JFrame {
     }
 
 
-    private void refreshMatchStatsOnTitleBar(Match match) {
-        String survivedMsg = Optional.ofNullable(match.getEscaped()).map(e -> e? "yes": "no").orElse("?");
-        String deathsMsg = Optional.ofNullable(match.getKillCount()).map(String::valueOf).orElse("?");
-        String msg = String.format("Current match  -  survived:  %s;   kills:  %s", survivedMsg, deathsMsg);
-        connStatusLabel.setText(msg);
+    private void refreshMatchInputOnTitleBar(Match match) {
+
+        if (match.getEscaped() == null) {
+            titleBarSurvivalInputEmptyLabel.setVisible(true);
+            titleBarSurvivalInputIconLabel.setVisible(false);
+        }
+        else {
+            titleBarSurvivalInputEmptyLabel.setVisible(false);
+            titleBarSurvivalInputIconLabel.setVisible(true);
+
+            if (match.getEscaped()) {
+                titleBarSurvivalInputIconLabel.setIcon(ResourceFactory.getIcon(Icon.THUMBS_UP_BLUE));
+            }
+            else {
+                titleBarSurvivalInputIconLabel.setIcon(ResourceFactory.getIcon(Icon.THUMBS_DOWN_BLUE));
+            }
+        }
+
+        if (match.getKillCount() == null) {
+            titleBarKillsInputValueLabel.setText("-");
+        }
+        else {
+            titleBarKillsInputValueLabel.setText(String.valueOf(match.getKillCount()));
+        }
     }
+
+
+    private void refreshServerInfoOnTitleBar(Server server) {
+        if (server == null || StringUtils.isBlank(server.getCountryCode())) {
+            titleBarServerLabel.setVisible(false);
+            return;
+        }
+
+        String msg = server.getCountryCode();
+        msg += StringUtils.isNotBlank(server.getCity()) ? " - " + server.getCity() : "";
+        msg += "  |  ";
+
+        titleBarServerLabel.setText(msg);
+        titleBarServerLabel.setVisible(true);
+    }
+
 
     public void close() {
         settings.forceSave();

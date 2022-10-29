@@ -2,6 +2,7 @@ package net.lobby_simulator_companion.loop;
 
 import lombok.extern.slf4j.Slf4j;
 import net.lobby_simulator_companion.loop.ui.startup.GithubPanel;
+import org.pcap4j.core.Pcaps;
 
 import javax.swing.*;
 import java.awt.*;
@@ -14,7 +15,7 @@ public class Sanity {
     public static boolean check() {
         boolean[] checks = {
                 checkGraphics(),
-                checkUpdate(),
+//                checkUpdate(),
                 checkJava()
         };
 
@@ -62,6 +63,20 @@ public class Sanity {
             return false;
         } else {
             log.info("Application is up to date!");
+        }
+        return true;
+    }
+
+    /**
+     * Check the WinPcap lib installation.
+     */
+    public static boolean checkPCap() {
+        try {
+            log.info("Pcap info: {}", Pcaps.libVersion());
+        } catch (Error e) {
+            log.warn("Failed to initialize PCap library. Server location identification is disabled. "
+                    + "Install NPCap or WinPCap to for this feature to be enabled.", e);
+            return false;
         }
         return true;
     }

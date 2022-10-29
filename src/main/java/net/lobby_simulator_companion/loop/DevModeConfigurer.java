@@ -43,8 +43,12 @@ public class DevModeConfigurer {
         ServerDao dao = mock(ServerDao.class);
         when(dao.getByIpAddress(any())).thenReturn(Server.builder()
                 .country("Argentina")
+                .countryCode("AR")
+                .region("Buenos Aires")
                 .city("Buenos Aires")
-                .isp("Argento-Server")
+                .latitude(-34.6036844)
+                .longitude(-58.3815591)
+                .isp("Argento-ISP")
                 .build());
 
         return dao;

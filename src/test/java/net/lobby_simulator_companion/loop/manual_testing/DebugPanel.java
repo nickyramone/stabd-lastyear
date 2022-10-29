@@ -8,6 +8,8 @@ import net.lobby_simulator_companion.loop.domain.stats.KillerStats;
 import net.lobby_simulator_companion.loop.domain.stats.MapStats;
 import net.lobby_simulator_companion.loop.domain.stats.Stats;
 import net.lobby_simulator_companion.loop.service.DbdLogMonitor;
+import net.lobby_simulator_companion.loop.service.GameEvent;
+import net.lobby_simulator_companion.loop.service.GameStateManager;
 import net.lobby_simulator_companion.loop.service.LoopDataService;
 import net.lobby_simulator_companion.loop.util.TimeUtil;
 
@@ -36,11 +38,13 @@ public class DebugPanel extends JPanel {
     private JFrame frame;
     private FileWriter logWriter;
     private LoopDataService dataService;
+    private GameStateManager gameStateManager;
 
 
-    public DebugPanel(DbdLogMonitor logMonitor, LoopDataService dataService) throws Exception {
+    public DebugPanel(DbdLogMonitor logMonitor, LoopDataService dataService, GameStateManager gameStateManager) throws Exception {
         this.dataService = dataService;
         this.logWriter = new FileWriter(logMonitor.getLogFile());
+        this.gameStateManager = gameStateManager;
 
         DevModeConfigurer.configureMockSteamProfileDaoResponse("1", "Dummy Name 1");
         DevModeConfigurer.configureMockSteamProfileDaoResponse("2", "Dummy Name 2");
@@ -144,13 +148,11 @@ public class DebugPanel extends JPanel {
     }
 
     private void simulateServerConnect() {
-        writeLog("[2020.06.19-15.41.57:856][178]LogNet: UPendingNetGame::SendInitialJoin: Sending hello. "
-                + "[UNetConnection] RemoteAddr: 18.156.246.136:7777, Name: SteamNetConnection_1, Driver: "
-                + "PendingNetDriver SteamNetDriver_1, IsServer: NO, PC: NULL, Owner: NULL, UniqueId: INVALID");
+        gameStateManager.fireEvent(GameEvent.CONNECTED_TO_LOBBY, "1.2.3.4");
     }
 
     private void simulateServerDisconnect() {
-        writeLog("--- FOnlineAsyncTaskMirrorsDestroyMatch ---");
+        gameStateManager.fireEvent(GameEvent.DISCONNECTED);
     }
 
     private void simulateLobbyLeave() {

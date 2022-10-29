@@ -22,7 +22,7 @@ public final class UiConstants {
     public static final Color COLOR__STATUS_BAR__CONNECTED__BG = new Color(0, 0xb0, 0);
     public static final Color COLOR__STATUS_BAR__DISCONNECTED__BG = new Color(0xb0, 0, 0);
 
-    public static final int WIDTH__LOOP_MAIN = 500;
+    public static final int WIDTH__LOOP_MAIN = 600;
     public static final int WIDTH__INFO_PANEL__NAME_COLUMN = 200;
     public static final int WIDTH__INFO_PANEL__VALUE_COLUMN = 200;
 

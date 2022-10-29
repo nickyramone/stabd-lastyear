@@ -13,6 +13,7 @@ public class Server {
     private final String address;
     private String hostName;
     private String country;
+    private String countryCode;
     private String region;
     private String city;
     private Double latitude;
