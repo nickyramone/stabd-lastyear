@@ -1,10 +1,15 @@
 package net.lobby_simulator_companion.loop.domain;
 
+import lombok.AllArgsConstructor;
+import lombok.Data;
+
 import java.net.InetAddress;
 
 /**
  * @author NickyRamone
  */
+@Data
+@AllArgsConstructor
 public class Connection {
 
     private final InetAddress localAddr;
@@ -13,61 +18,14 @@ public class Connection {
     private final int remotePort;
     private final long created;
     private long lastSeen;
+    private Integer latency;
 
     public Connection(InetAddress localAddr, int localPort, InetAddress remoteAddr, int remotePort) {
-        this.localAddr = localAddr;
-        this.localPort = localPort;
-        this.remoteAddr = remoteAddr;
-        this.remotePort = remotePort;
-        this.created = System.currentTimeMillis();
-        this.lastSeen = created;
+        this(localAddr, localPort, remoteAddr, remotePort, System.currentTimeMillis());
     }
 
-    public Connection(InetAddress localAddr, int localPort, InetAddress remoteAddr, int remotePort, long created) {
-        this.localAddr = localAddr;
-        this.localPort = localPort;
-        this.remoteAddr = remoteAddr;
-        this.remotePort = remotePort;
-        this.created = created;
-        this.lastSeen = created;
+    private Connection(InetAddress localAddr, int localPort, InetAddress remoteAddr, int remotePort, long createdOn) {
+        this(localAddr, localPort, remoteAddr, remotePort, createdOn, createdOn, null);
     }
 
-
-    public InetAddress getLocalAddr() {
-        return localAddr;
-    }
-
-    public int getLocalPort() {
-        return localPort;
-    }
-
-    public InetAddress getRemoteAddr() {
-        return remoteAddr;
-    }
-
-    public int getRemotePort() {
-        return remotePort;
-    }
-
-    public long getCreated() {
-        return created;
-    }
-
-    public long getLastSeen() {
-        return lastSeen;
-    }
-
-    public void setLastSeen(long lastSeen) {
-        this.lastSeen = lastSeen;
-    }
-
-    @Override
-    public String toString() {
-        return "Connection{" +
-                "localAddr=" + localAddr +
-                ", localPort=" + localPort +
-                ", remoteAddr=" + remoteAddr +
-                ", remotePort=" + remotePort +
-                '}';
-    }
 }

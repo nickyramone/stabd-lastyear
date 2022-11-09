@@ -2,7 +2,9 @@ package net.lobby_simulator_companion.loop;
 
 import net.lobby_simulator_companion.loop.config.AppProperties;
 import net.lobby_simulator_companion.loop.domain.Connection;
-import net.lobby_simulator_companion.loop.service.*;
+import net.lobby_simulator_companion.loop.service.ConnectionManager;
+import net.lobby_simulator_companion.loop.service.GameEvent;
+import net.lobby_simulator_companion.loop.service.SnifferListener;
 import net.lobby_simulator_companion.loop.ui.MainWindow;
 import net.lobby_simulator_companion.loop.util.FileUtil;
 import org.apache.commons.lang3.StringUtils;
@@ -100,21 +102,23 @@ public class Boot {
         setupTray();
     }
 
-    private static void initConnectionManager(InetAddress localAddr) throws PcapNativeException, NotOpenException {
+    private static void initConnectionManager(InetAddress localAddr) {
         if (!Factory.appProperties().getBoolean("debug")) {
             log.info("Starting net traffic sniffer...");
             try {
-                connectionManager = new DedicatedServerConnectionManager(localAddr, new SnifferListener() {
+                connectionManager = Factory.dedicatedServerConnectionManager(localAddr, new SnifferListener() {
 
                     @Override
                     public void notifyMatchConnect(Connection connection) {
-                        log.debug("Detected new connection: {}", connection);
-                        Factory.gameStateManager().fireEvent(GameEvent.CONNECTED_TO_LOBBY, connection.getRemoteAddr().getHostAddress());
+                        Factory.gameStateManager().fireEvent(GameEvent.CONNECTED_TO_LOBBY, connection);
                     }
 
                     public void notifyMatchDisconnect() {
-                        log.debug("disconnected");
                         Factory.gameStateManager().fireEvent(GameEvent.DISCONNECTED);
+                    }
+
+                    @Override
+                    public void notifyPingUpdate(int ping) {
                     }
 
                     @Override
@@ -123,7 +127,7 @@ public class Boot {
                         fatalErrorDialog("A fatal error occurred while processing connections.\nPlease, send us the log files.");
                     }
                 });
-            } catch (InvalidNetworkInterfaceException e) {
+            } catch (Exception e) {
                 fatalErrorDialog("The device you selected doesn't seem to exist. Double-check the IP you entered.");
             }
 

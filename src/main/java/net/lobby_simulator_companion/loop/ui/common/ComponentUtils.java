@@ -32,6 +32,16 @@ public final class ComponentUtils {
         return button;
     }
 
+    public static JLabel createTitleSeparatorLabel() {
+        Border border = new EmptyBorder(3, 5, 0, 5);
+
+        JLabel separatorLabel = new JLabel("|");
+        separatorLabel.setBorder(border);
+        separatorLabel.setForeground(Color.YELLOW);
+        separatorLabel.setFont(ResourceFactory.getRobotoFont());
+
+        return separatorLabel;
+    }
 
     public static JLabel createInfoPanelNameLabel() {
         return createInfoPanelLabel(null, JLabel.RIGHT, UiConstants.COLOR__INFO_PANEL__NAME__FG);

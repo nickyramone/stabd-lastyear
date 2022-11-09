@@ -5,16 +5,12 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import net.lobby_simulator_companion.loop.config.AppProperties;
 import net.lobby_simulator_companion.loop.config.Settings;
+import net.lobby_simulator_companion.loop.domain.Connection;
 import net.lobby_simulator_companion.loop.domain.Server;
 import net.lobby_simulator_companion.loop.repository.ServerDao;
 import net.lobby_simulator_companion.loop.service.GameEvent;
 import net.lobby_simulator_companion.loop.service.GameStateManager;
-import net.lobby_simulator_companion.loop.ui.common.CollapsablePanel;
-import net.lobby_simulator_companion.loop.ui.common.ComponentUtils;
-import net.lobby_simulator_companion.loop.ui.common.NameValueInfoPanel;
-import net.lobby_simulator_companion.loop.ui.common.ResourceFactory;
-import net.lobby_simulator_companion.loop.ui.common.UiConstants;
-import net.lobby_simulator_companion.loop.ui.common.UiEventOrchestrator;
+import net.lobby_simulator_companion.loop.ui.common.*;
 
 import javax.swing.*;
 import java.awt.*;
@@ -27,9 +23,7 @@ import java.util.Locale;
 import java.util.Optional;
 
 import static net.lobby_simulator_companion.loop.ui.common.ResourceFactory.Icon;
-import static net.lobby_simulator_companion.loop.ui.common.UiConstants.COLOR__INFO_PANEL__BG;
-import static net.lobby_simulator_companion.loop.ui.common.UiConstants.WIDTH__INFO_PANEL__NAME_COLUMN;
-import static net.lobby_simulator_companion.loop.ui.common.UiConstants.WIDTH__INFO_PANEL__VALUE_COLUMN;
+import static net.lobby_simulator_companion.loop.ui.common.UiConstants.*;
 
 
 /**
@@ -45,7 +39,7 @@ public class ServerPanel extends JPanel {
         COUNTRY("Country:"),
         REGION("Region:"),
         CITY("City:"),
-        PROVIDER("Provider:");
+        LATENCY("Latency:");
 
         final String description;
 
@@ -84,7 +78,7 @@ public class ServerPanel extends JPanel {
 
     private void initEventListeners() {
         gameStateManager.registerListener(GameEvent.CONNECTED_TO_LOBBY,
-                evt -> updateServerIpAddress((String) evt.getValue()));
+                evt -> updateServerConnection((Connection) evt.getValue()));
         gameStateManager.registerListener(GameEvent.DISCONNECTED,
                 evt -> refreshClear());
     }
@@ -164,10 +158,11 @@ public class ServerPanel extends JPanel {
         return container;
     }
 
-    private void updateServerIpAddress(String ipAddress) {
+    private void updateServerConnection(Connection serverConnection) {
         new Thread(() -> {
             try {
-                Server newServerInfo = serverDao.getByIpAddress(ipAddress);
+                Server newServerInfo = serverDao.getByIpAddress(serverConnection.getRemoteAddr().getHostAddress());
+                newServerInfo.setLatency(serverConnection.getLatency());
                 SwingUtilities.invokeLater(() -> {
                     refreshServerOnScreen(newServerInfo);
                     uiEventOrchestrator.fireEvent(UiEventOrchestrator.UiEvent.SERVER_INFO_UPDATED, newServerInfo);
@@ -189,7 +184,7 @@ public class ServerPanel extends JPanel {
         setServerValue(InfoType.COUNTRY, server.getCountry());
         setServerValue(InfoType.REGION, server.getRegion());
         setServerValue(InfoType.CITY, server.getCity());
-        setServerValue(InfoType.PROVIDER, server.getIsp());
+        setServerValue(InfoType.LATENCY, server.getLatency() != null ? server.getLatency() + " ms" : "?");
     }
 
     public void refreshClear() {
@@ -199,7 +194,7 @@ public class ServerPanel extends JPanel {
         setServerValue(InfoType.COUNTRY, null);
         setServerValue(InfoType.REGION, null);
         setServerValue(InfoType.CITY, null);
-        setServerValue(InfoType.PROVIDER, null);
+        setServerValue(InfoType.LATENCY, null);
         uiEventOrchestrator.fireEvent(UiEventOrchestrator.UiEvent.SERVER_INFO_UPDATED);
     }
 

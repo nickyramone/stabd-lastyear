@@ -22,7 +22,7 @@
 
     <logger name="org.reflections.Reflections" level="error"/>
 
-    <root level="debug">
+    <root level="error">
         <appender-ref ref="CONSOLE"/>
         <appender-ref ref="ROLLING-FILE"/>
     </root>

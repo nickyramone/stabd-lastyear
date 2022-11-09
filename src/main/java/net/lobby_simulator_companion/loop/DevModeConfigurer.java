@@ -3,6 +3,7 @@ package net.lobby_simulator_companion.loop;
 import net.lobby_simulator_companion.loop.domain.Server;
 import net.lobby_simulator_companion.loop.repository.ServerDao;
 import net.lobby_simulator_companion.loop.repository.SteamProfileDao;
+import net.lobby_simulator_companion.loop.service.ConnectionManager;
 
 import java.io.IOException;
 import java.util.HashMap;
@@ -23,6 +24,7 @@ public class DevModeConfigurer {
     public static void init() throws IOException {
         Factory.setInstance(SteamProfileDao.class, mockSteamProfileDao());
         Factory.setInstance(ServerDao.class, mockServerDao());
+        Factory.setInstance(ConnectionManager.class, mockConnectionManager());
         Factory.gameStateManager().setMinMatchSeconds(5);
     }
 
@@ -52,6 +54,25 @@ public class DevModeConfigurer {
                 .build());
 
         return dao;
+    }
+
+    private static ConnectionManager mockConnectionManager() {
+        return new ConnectionManager() {
+            @Override
+            public void start() {
+
+            }
+
+            @Override
+            public void stop() {
+
+            }
+
+            @Override
+            public void close() {
+
+            }
+        };
     }
 
 }

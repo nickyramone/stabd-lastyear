@@ -11,6 +11,8 @@ public interface SnifferListener {
 
     void notifyMatchDisconnect();
 
+    void notifyPingUpdate(int ping);
+
     void handleException(Exception e);
 
 }

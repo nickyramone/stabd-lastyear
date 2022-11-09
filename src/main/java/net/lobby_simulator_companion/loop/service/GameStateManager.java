@@ -59,7 +59,6 @@ public class GameStateManager implements NativeKeyListener {
 
 
     private final AppProperties appProperties;
-    private final DbdLogMonitor dbdLogMonitor;
     private final LoopDataService dataService;
     private final SteamProfileDao steamProfileDao;
     private final ChaseEventManager chaseEventManager;
@@ -78,10 +77,9 @@ public class GameStateManager implements NativeKeyListener {
     private boolean timerRunning;
 
 
-    public GameStateManager(AppProperties appProperties, DbdLogMonitor dbdLogMonitor, LoopDataService dataService,
+    public GameStateManager(AppProperties appProperties, LoopDataService dataService,
                             SteamProfileDao steamProfileDao, ChaseEventManager chaseEventManager) {
         this.appProperties = appProperties;
-        this.dbdLogMonitor = dbdLogMonitor;
         this.dataService = dataService;
         this.steamProfileDao = steamProfileDao;
         this.chaseEventManager = chaseEventManager;
@@ -94,18 +92,6 @@ public class GameStateManager implements NativeKeyListener {
 
 
     private void init() {
-        dbdLogMonitor.registerListener(DbdLogEvent.MATCH_WAIT, evt -> handleMatchWaitStart());
-        dbdLogMonitor.registerListener(DbdLogEvent.MATCH_WAIT_CANCEL, evt -> handleMatchWaitCancel());
-        dbdLogMonitor.registerListener(DbdLogEvent.SERVER_CONNECT, evt -> handleServerConnect((InetSocketAddress) evt.getValue()));
-        dbdLogMonitor.registerListener(DbdLogEvent.KILLER_PLAYER, evt -> handleNewKillerPlayer((PlayerDto) evt.getValue()));
-        dbdLogMonitor.registerListener(DbdLogEvent.KILLER_CHARACTER, evt -> handleNewKillerCharacter((Killer) evt.getValue()));
-        dbdLogMonitor.registerListener(DbdLogEvent.MAP_GENERATE, evt -> handleMapGeneration((RealmMap) evt.getValue()));
-        dbdLogMonitor.registerListener(DbdLogEvent.REALM_ENTER, evt -> handleRealmEnter());
-        dbdLogMonitor.registerListener(DbdLogEvent.MATCH_START, evt -> handleMatchStart());
-        dbdLogMonitor.registerListener(DbdLogEvent.USER_LEFT_REALM, evt -> handleRealmLeave());
-        dbdLogMonitor.registerListener(DbdLogEvent.SURVIVED, evt -> handleCurrentPlayerSurvival());
-        dbdLogMonitor.registerListener(DbdLogEvent.SERVER_DISCONNECT, evt -> handleServerDisconnect());
-
         chaseEventManager.registerEventListener(ChaseEventManager.Event.CHASE_START, evt -> fireEvent(GameEvent.CHASE_STARTED, evt.getValue()));
         chaseEventManager.registerEventListener(ChaseEventManager.Event.CHASE_END, evt -> fireEvent(GameEvent.CHASE_ENDED));
 
@@ -294,9 +280,6 @@ public class GameStateManager implements NativeKeyListener {
         eventSupport.registerListener(eventType, eventListener);
     }
 
-    public State getState() {
-        return dbdLogMonitor.getState();
-    }
 
     public void fireEvent(Object eventType) {
         eventSupport.fireEvent(eventType);

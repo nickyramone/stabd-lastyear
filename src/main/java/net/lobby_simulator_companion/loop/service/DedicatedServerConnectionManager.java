@@ -1,10 +1,10 @@
 package net.lobby_simulator_companion.loop.service;
 
+import lombok.ToString;
+import lombok.extern.slf4j.Slf4j;
 import net.lobby_simulator_companion.loop.domain.Connection;
 import org.pcap4j.core.*;
 import org.pcap4j.packet.*;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 import java.net.InetAddress;
 import java.util.Timer;
@@ -13,26 +13,35 @@ import java.util.TimerTask;
 /**
  * The initial handshake with the dedicated server hosting the match (including lobby) is through WireGuard protocol:
  * https://www.wireguard.com/protocol/
+ * <p>
+ * Update 2022-11-06: Looking at the traffic, it doesn't really seem WireGuard. Maybe I was wrong before; I don't think
+ * it changed.
  *
  * @author NickyRamone
  */
+@Slf4j
 public class DedicatedServerConnectionManager implements ConnectionManager {
 
-    private static final int MAX_CAPTURED_PACKET_SIZE = 1500;
+    /**
+     * We need at least 71 bytes for the handshake requests and responses, but in order to check that the connection
+     * is alive, we need to consider at least 150 bytes for server responses.
+     */
+    private static final int MAX_CAPTURED_PACKET_SIZE = 150;
     private static final int CLEANER_POLL_MS = 1000;
     private static final int CONNECTION_TIMEOUT_MS = 5000;
-    private static final Logger logger = LoggerFactory.getLogger(DedicatedServerConnectionManager.class);
 
     /**
      * Berkley Packet Filter (BPF):
      * http://biot.com/capstats/bpf.html
      * https://www.tcpdump.org/manpages/pcap-filter.7.html
      */
-    private static final String BPF = "tcp or udp and len <= " + MAX_CAPTURED_PACKET_SIZE;
+    private static final String PACKET_FILTER__SEARCH_CONNECTION = "udp and len <= 100";
+    private static final String PACKET_FILTER__CHECK_CONNECTION_ALIVE = "udp and src host %s and dst host %s and len <= 150";
 
 
+    @ToString(exclude = "payload")
     private static final class PacketInfo {
-        private enum Protocol {TCP, UDP}
+        enum Protocol {TCP, UDP}
 
         Protocol protocol;
         int packetLen;
@@ -41,34 +50,24 @@ public class DedicatedServerConnectionManager implements ConnectionManager {
         int srcPort;
         int dstPort;
         int payloadLen;
-
         Packet payload;
-
-        @Override
-        public String toString() {
-            return "PacketInfo{" +
-                    "protocol=" + protocol +
-                    ", packetLen=" + packetLen +
-                    ", srcAddress=" + srcAddress +
-                    ", dstAddress=" + dstAddress +
-                    ", srcPort=" + srcPort +
-                    ", dstPort=" + dstPort +
-                    ", payloadLen=" + payloadLen +
-                    '}';
-        }
+        long timestamp;
     }
 
-    private enum State {Idle, Connected}
+    private enum State {IDLE, HANDSHAKE1_REQUESTED, HANDSHAKE1_RESPONDED, HANDSHAKE2_REQUESTED, HANDSHAKE_COMPLETE}
 
-    private InetAddress localAddr;
-    private SnifferListener snifferListener;
-    private PcapNetworkInterface networkInterface;
+    private final InetAddress localAddr;
+    private final SnifferListener snifferListener;
+    private final Timer connectionCleanerTimer = new Timer();
     private PcapHandle pcapHandle;
-    private Connection matchConn;
-    private State state = State.Idle;
+    private Connection serverConnection;
+    private State state = State.IDLE;
+    private PacketInfo lastRequest;
 
 
-    public DedicatedServerConnectionManager(InetAddress localAddr, SnifferListener snifferListener) throws PcapNativeException, NotOpenException, InvalidNetworkInterfaceException {
+    public DedicatedServerConnectionManager(InetAddress localAddr, SnifferListener snifferListener)
+            throws PcapNativeException, NotOpenException, InvalidNetworkInterfaceException {
+
         this.localAddr = localAddr;
         this.snifferListener = snifferListener;
         initNetworkInterface();
@@ -77,16 +76,14 @@ public class DedicatedServerConnectionManager implements ConnectionManager {
 
 
     private void initNetworkInterface() throws PcapNativeException, InvalidNetworkInterfaceException, NotOpenException {
-        networkInterface = Pcaps.getDevByAddress(localAddr);
+        PcapNetworkInterface networkInterface = Pcaps.getDevByAddress(localAddr);
         if (networkInterface == null) {
             throw new InvalidNetworkInterfaceException();
         }
 
         final PcapNetworkInterface.PromiscuousMode mode = PcapNetworkInterface.PromiscuousMode.NONPROMISCUOUS;
         pcapHandle = networkInterface.openLive(MAX_CAPTURED_PACKET_SIZE, mode, 1000);
-
-        String filterExpr = String.format(BPF, localAddr.getHostAddress(), localAddr.getHostAddress());
-        pcapHandle.setFilter(filterExpr, BpfProgram.BpfCompileMode.OPTIMIZE);
+        pcapHandle.setFilter(PACKET_FILTER__SEARCH_CONNECTION, BpfProgram.BpfCompileMode.OPTIMIZE);
     }
 
 
@@ -100,7 +97,7 @@ public class DedicatedServerConnectionManager implements ConnectionManager {
     }
 
     private void sniffPackets() throws PcapNativeException, NotOpenException {
-        logger.info("Started sniffing packets.");
+        log.info("Started sniffing packets.");
 
         try {
             pcapHandle.loop(-1, this::handlePacket);
@@ -110,23 +107,48 @@ public class DedicatedServerConnectionManager implements ConnectionManager {
     }
 
     private void handlePacket(Packet packet) {
-        PacketInfo packetInfo = getPacketInfo(packet);
+
+        PacketInfo packetInfo = adaptPacket(packet);
         if (packetInfo == null) {
             return;
         }
 
-        if (isMatchConnect(packetInfo)) {
-            logger.debug("Connected to match.");
-            state = State.Connected;
-            matchConn = new Connection(localAddr, packetInfo.srcPort, packetInfo.dstAddress, packetInfo.dstPort);
-            snifferListener.notifyMatchConnect(matchConn);
+        boolean isServerRequest = isServerRequest(packetInfo);
+        boolean isServerResponse = isServerResponse(packetInfo);
 
-        } else if (isExchangeWithMatchServer(packetInfo)) {
-            matchConn.setLastSeen(System.currentTimeMillis());
+        if (state != State.HANDSHAKE_COMPLETE && isPossibleHandshake(packetInfo)) {
+            if (state == State.IDLE && isHandshakeInitRequest(packetInfo)) {
+                log.debug("Server connection - handhake 1 requested");
+                state = State.HANDSHAKE1_REQUESTED;
+                lastRequest = packetInfo;
+                serverConnection = new Connection(localAddr, packetInfo.srcPort, packetInfo.dstAddress, packetInfo.dstPort);
+                log.debug("Connection request to game server: {}", serverConnection);
+
+            } else if (state == State.HANDSHAKE1_REQUESTED && isServerResponse) {
+                log.debug("Server connection - handhake 1 responded");
+                state = State.HANDSHAKE1_RESPONDED;
+                serverConnection.setLatency((int) (packetInfo.timestamp - lastRequest.timestamp));
+
+            } else if (state == State.HANDSHAKE1_RESPONDED && isServerRequest) {
+                log.debug("Server connection - handhake 2 requested");
+                state = State.HANDSHAKE2_REQUESTED;
+                lastRequest = packetInfo;
+
+            } else if (state == State.HANDSHAKE2_REQUESTED && isServerResponse) {
+                log.debug("Server connection - handhake 2 responded");
+                state = State.HANDSHAKE_COMPLETE;
+                int latency = (int) (packetInfo.timestamp - lastRequest.timestamp);
+                serverConnection.setLatency((serverConnection.getLatency() + latency) / 2);
+                setPacketFilter(PACKET_FILTER__CHECK_CONNECTION_ALIVE,
+                        serverConnection.getRemoteAddr().getHostAddress(), serverConnection.getLocalAddr().getHostAddress());
+                snifferListener.notifyMatchConnect(serverConnection);
+            }
+        } else if (state == State.HANDSHAKE_COMPLETE && isServerResponse) {
+            serverConnection.setLastSeen(packetInfo.timestamp);
         }
     }
 
-    private PacketInfo getPacketInfo(Packet packet) {
+    private PacketInfo adaptPacket(Packet packet) {
         IpPacket ipPacket = packet.get(IpV4Packet.class);
 
         if (ipPacket == null) {
@@ -134,6 +156,7 @@ public class DedicatedServerConnectionManager implements ConnectionManager {
         }
 
         PacketInfo info = new PacketInfo();
+        info.timestamp = pcapHandle.getTimestamp().getTime();
         info.packetLen = packet.length();
         TcpPacket tcpPacket = ipPacket.get(TcpPacket.class);
         UdpPacket udpPacket = ipPacket.get(UdpPacket.class);
@@ -157,64 +180,82 @@ public class DedicatedServerConnectionManager implements ConnectionManager {
         return info;
     }
 
-    private boolean isMatchConnect(PacketInfo packetInfo) {
-        return state == State.Idle && isWireGuardHandshakeInit(packetInfo);
+    private boolean isPossibleHandshake(PacketInfo packetInfo) {
+        return packetInfo != null
+                && packetInfo.payload != null
+                && packetInfo.payload.length() == 29;
     }
 
-    private boolean isWireGuardHandshakeInit(PacketInfo packetInfo) {
-        if (packetInfo == null) {
-            return false;
-        }
-        byte[] rawData = packetInfo.payload != null ? packetInfo.payload.getRawData() : new byte[0];
+    private boolean isHandshakeInitRequest(PacketInfo packetInfo) {
+        byte[] udpData = packetInfo.payload.getRawData();
 
         return packetInfo.srcAddress.equals(localAddr)
-                && rawData.length >= 4
-                && rawData[0] == 0x01 && rawData[1] == 0x00 && rawData[2] == 0x00 && rawData[3] == 0x00;
+                && udpData[0] == 0x01
+                && udpData[2] == 0x00
+                && udpData[3] == 0x00
+                && udpData[4] == 0x00;
     }
 
-    private boolean isExchangeWithMatchServer(PacketInfo packetInfo) {
-        return (state == State.Connected)
-                && matchConn != null
-                && packetInfo.protocol == PacketInfo.Protocol.UDP
-                && packetInfo.srcAddress.equals(matchConn.getRemoteAddr()) && packetInfo.srcPort == matchConn.getRemotePort();
+    private boolean isServerRequest(PacketInfo packetInfo) {
+        return serverConnection != null
+                && packetInfo.dstAddress.equals(serverConnection.getRemoteAddr()) && packetInfo.dstPort == serverConnection.getRemotePort();
+    }
+
+    private boolean isServerResponse(PacketInfo packetInfo) {
+        return serverConnection != null
+                && packetInfo.srcAddress.equals(serverConnection.getRemoteAddr()) && packetInfo.srcPort == serverConnection.getRemotePort();
     }
 
     @Override
     public void stop() {
         if (pcapHandle != null) {
-            logger.info("Cleaning up sniffer...");
+            log.info("Cleaning up sniffer...");
             try {
                 pcapHandle.breakLoop();
             } catch (NotOpenException e) {
-                logger.error("Failed when attempting to stop sniffer.", e);
+                log.error("Failed when attempting to stop sniffer.", e);
             }
         }
     }
 
     public void close() {
+        connectionCleanerTimer.cancel();
         stop();
         pcapHandle.close();
-        logger.info("Freed network interface handle.");
+        log.info("Freed network interface handle.");
     }
 
 
     private void startConnectionCleaner() {
-        Timer connectionCleanerTimer = new Timer();
         connectionCleanerTimer.scheduleAtFixedRate(new TimerTask() {
             @Override
             public void run() {
                 long currentTime = System.currentTimeMillis();
 
-                if ((state == State.Connected)
-                        && currentTime > matchConn.getLastSeen() + CONNECTION_TIMEOUT_MS) {
-                    logger.debug("Detected match disconnection.");
-                    matchConn = null;
-                    state = State.Idle;
-                    snifferListener.notifyMatchDisconnect();
+                if (serverConnection != null && currentTime > serverConnection.getLastSeen() + CONNECTION_TIMEOUT_MS) {
+                    log.debug("Detected match disconnection.");
+                    clearConnection();
                 }
             }
         }, 0, CLEANER_POLL_MS);
     }
 
+    private void clearConnection() {
+        if (state == State.HANDSHAKE_COMPLETE) {
+            snifferListener.notifyMatchDisconnect();
+        }
+        serverConnection = null;
+        state = State.IDLE;
+        setPacketFilter(PACKET_FILTER__SEARCH_CONNECTION);
+    }
+
+    private void setPacketFilter(String filterExpr, Object... args) {
+        try {
+            String filter = String.format(filterExpr, args);
+            pcapHandle.setFilter(filter, BpfProgram.BpfCompileMode.OPTIMIZE);
+        } catch (Exception e) {
+            throw new RuntimeException(e);
+        }
+    }
 
 }
