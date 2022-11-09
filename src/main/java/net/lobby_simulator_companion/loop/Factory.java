@@ -71,11 +71,6 @@ public final class Factory {
         return getInstance(Settings.class, unchecked(Settings::new));
     }
 
-    public static PingDigest pingDigest() {
-        return getInstance(PingDigest.class, TimePeriodTruncatedMeanPingDigest::new);
-    }
-
-
     public static ConnectionManager dedicatedServerConnectionManager(InetAddress localAddr, SnifferListener snifferListener) {
 
         return getInstance(ConnectionManager.class, unchecked(
