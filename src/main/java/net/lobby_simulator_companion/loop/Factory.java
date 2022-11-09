@@ -5,10 +5,11 @@ import lombok.extern.slf4j.Slf4j;
 import net.lobby_simulator_companion.loop.config.AppProperties;
 import net.lobby_simulator_companion.loop.config.LoopGsonFactory;
 import net.lobby_simulator_companion.loop.config.Settings;
-import net.lobby_simulator_companion.loop.repository.*;
-import net.lobby_simulator_companion.loop.service.DbdLogMonitor;
-import net.lobby_simulator_companion.loop.service.GameStateManager;
-import net.lobby_simulator_companion.loop.service.LoopDataService;
+import net.lobby_simulator_companion.loop.repository.IpWhoIsClient;
+import net.lobby_simulator_companion.loop.repository.LoopRepository;
+import net.lobby_simulator_companion.loop.repository.ServerDao;
+import net.lobby_simulator_companion.loop.repository.SteamProfileDao;
+import net.lobby_simulator_companion.loop.service.*;
 import net.lobby_simulator_companion.loop.service.log_event_orchestrators.ChaseEventManager;
 import net.lobby_simulator_companion.loop.service.log_processing.impl.ChaseLogProcessor;
 import net.lobby_simulator_companion.loop.service.log_processing.impl.KillerLogProcessor;
@@ -21,6 +22,7 @@ import net.lobby_simulator_companion.loop.ui.startup.PluginLoadUi;
 import net.lobby_simulator_companion.loop.util.event.EventSupport;
 
 import java.io.File;
+import java.net.InetAddress;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.function.Supplier;
@@ -67,6 +69,17 @@ public final class Factory {
 
     public static Settings settings() {
         return getInstance(Settings.class, unchecked(Settings::new));
+    }
+
+    public static PingDigest pingDigest() {
+        return getInstance(PingDigest.class, TimePeriodTruncatedMeanPingDigest::new);
+    }
+
+
+    public static ConnectionManager dedicatedServerConnectionManager(InetAddress localAddr, SnifferListener snifferListener) {
+
+        return getInstance(ConnectionManager.class, unchecked(
+                () -> new DedicatedServerConnectionManager(localAddr, snifferListener)));
     }
 
     public static LoopRepository loopRepository() {
@@ -144,7 +157,7 @@ public final class Factory {
         return getInstance(GameStateManager.class,
                 () -> new GameStateManager(
                         appProperties(),
-                        dbdLogMonitor(),
+//                        dbdLogMonitor(),
                         loopDataService(),
                         steamProfileDao(),
                         chaseEventManager()

@@ -22,6 +22,8 @@ import java.awt.event.ComponentAdapter;
 import java.awt.event.ComponentEvent;
 import java.awt.event.MouseAdapter;
 import java.awt.event.MouseEvent;
+import java.time.Duration;
+import java.time.Instant;
 import java.util.Arrays;
 import java.util.LinkedList;
 import java.util.Optional;
@@ -32,6 +34,7 @@ import static net.lobby_simulator_companion.loop.ui.common.ResourceFactory.Icon;
 import static net.lobby_simulator_companion.loop.ui.common.UiConstants.WIDTH__LOOP_MAIN;
 import static net.lobby_simulator_companion.loop.ui.common.UiEventOrchestrator.UiEvent;
 import static org.apache.commons.lang3.StringUtils.isNotEmpty;
+import static org.apache.commons.lang3.StringUtils.left;
 
 /**
  * @author NickyRamone
@@ -66,6 +69,7 @@ public class MainWindow extends JFrame {
     private static final String TOOLTIP__BUTTON__FORCE_DISCONNECT = "Force disconnect (this will not affect the game)";
     private static final String TOOLTIP__BUTTON__EXIT_APP = "Exit application";
     private static final String MSG__STATUS__MATCH_CANCELLED = "Match was cancelled.";
+    private static final String MSG__LAST_CONNECTION_DURATION = "Last connection duration: ";
     private static final String MSG__STATUS__PLAYER_ESCAPED = "You escaped :)";
     private static final String MSG__STATUS__PLAYER_DIED = "You died :(";
 
@@ -86,6 +90,11 @@ public class MainWindow extends JFrame {
     private Timer genericTimer;
 
     private JPanel titleBar;
+    private JPanel mainBarMainContainer;
+    //    private JPanel pingContainer;
+    private JPanel titleBarServerPanel;
+    private JLabel pingLabel;
+    private JPanel connMsgPanel;
     private JPanel titleBarInputContainer;
     private JLabel titleBarSurvivalInputLabel;
     private JLabel titleBarSurvivalInputEmptyLabel;
@@ -110,7 +119,7 @@ public class MainWindow extends JFrame {
     private JPanel detailPanel;
     private boolean detailPanelSavedVisibilityState;
 
-//    private Match match;
+    private Instant connectionStartTime;
 
 
     public MainWindow(Settings settings, AppProperties appProperties, LoopDataService loopDataService,
@@ -156,12 +165,12 @@ public class MainWindow extends JFrame {
 
     private void initGameStateListeners(GameStateManager gameStateManager, UiEventOrchestrator uiEventOrchestrator) {
         gameStateManager.registerListener(GameEvent.DISCONNECTED, evt -> handleServerDisconnect());
-        gameStateManager.registerListener(GameEvent.START_LOBBY_SEARCH, evt -> handleLobbySearchStart());
+//        gameStateManager.registerListener(GameEvent.START_LOBBY_SEARCH, evt -> handleLobbySearchStart());
         gameStateManager.registerListener(GameEvent.CONNECTED_TO_LOBBY, evt -> handleLobbyConnect());
-        gameStateManager.registerListener(GameEvent.START_MAP_GENERATION, evt -> handleMapGeneration());
-        gameStateManager.registerListener(GameEvent.MATCH_STARTED, evt -> handleMatchStart());
-        gameStateManager.registerListener(GameEvent.MATCH_ENDED, evt -> handleMatchEnd((Match) evt.getValue()));
-        gameStateManager.registerListener(GameEvent.NEW_KILLER_PLAYER, evt -> refreshKillerPlayerOnTitleBar((Player) evt.getValue()));
+//        gameStateManager.registerListener(GameEvent.START_MAP_GENERATION, evt -> handleMapGeneration());
+//        gameStateManager.registerListener(GameEvent.MATCH_STARTED, evt -> handleMatchStart());
+//        gameStateManager.registerListener(GameEvent.MATCH_ENDED, evt -> handleMatchEnd((Match) evt.getValue()));
+//        gameStateManager.registerListener(GameEvent.NEW_KILLER_PLAYER, evt -> refreshKillerPlayerOnTitleBar((Player) evt.getValue()));
         gameStateManager.registerListener(GameEvent.MANUALLY_INPUT_MATCH_STATS, evt -> handleMatchManualInput((Match) evt.getValue()));
         gameStateManager.registerListener(GameEvent.UPDATED_STATS, evt -> refreshMatchInputOnTitleBar(new Match()));
         gameStateManager.registerListener(GameEvent.TIMER_START, evt -> handleTimerStart());
@@ -173,6 +182,15 @@ public class MainWindow extends JFrame {
         uiEventOrchestrator.registerListener(UiEvent.STRUCTURE_RESIZED, evt -> pack());
     }
 
+    public void showMessage(String message, int durationMillis) {
+        showMessage(message);
+        Timer timer = new Timer(durationMillis, e -> {
+            hideMessage();
+        });
+
+        timer.setRepeats(false);
+        timer.start();
+    }
 
     public void showMessage(String message) {
         lastConnMsgLabel.setText(message);
@@ -276,48 +294,40 @@ public class MainWindow extends JFrame {
 
         appLabel = new JLabel(appProperties.get("app.name.short"));
         appLabel.setBorder(border);
-        appLabel.setForeground(Color.YELLOW);
+        appLabel.setForeground(Color.WHITE);
         appLabel.setFont(font);
-
-        JLabel separatorLabel = new JLabel("|");
-        separatorLabel.setBorder(border);
-        separatorLabel.setForeground(Color.WHITE);
-        separatorLabel.setFont(font);
 
         titleBarServerLabel = new JLabel();
         titleBarServerLabel.setBorder(border);
         titleBarServerLabel.setForeground(Color.CYAN);
         titleBarServerLabel.setFont(font);
-        titleBarServerLabel.setVisible(false);
 
         connStatusLabel = new JLabel();
         connStatusLabel.setBorder(border);
         connStatusLabel.setForeground(Color.WHITE);
         connStatusLabel.setFont(font);
 
-        titleBarSurvivalInputLabel  = new JLabel("Survived?");
+        titleBarSurvivalInputLabel = new JLabel("Escaped?");
         titleBarSurvivalInputLabel.setBorder(border);
         titleBarSurvivalInputLabel.setForeground(Color.WHITE);
         titleBarSurvivalInputLabel.setFont(font);
 
-        titleBarSurvivalInputEmptyLabel  = new JLabel("-");
+        titleBarSurvivalInputEmptyLabel = new JLabel("-");
         titleBarSurvivalInputEmptyLabel.setBorder(border);
         titleBarSurvivalInputEmptyLabel.setForeground(Color.BLUE);
         titleBarSurvivalInputEmptyLabel.setFont(font);
 
-        titleBarSurvivalInputIconLabel  = new JLabel();
+        titleBarSurvivalInputIconLabel = new JLabel();
         titleBarSurvivalInputIconLabel.setBorder(border);
-//        titleBarSurvivalInputIconLabel.setForeground(Color.WHITE);
-//        titleBarSurvivalInputIconLabel.setFont(font);
         titleBarSurvivalInputIconLabel.setVisible(false);
 
 
-        titleBarKillsInputLabel  = new JLabel("# of kills:");
+        titleBarKillsInputLabel = new JLabel("# of kills:");
         titleBarKillsInputLabel.setBorder(border);
         titleBarKillsInputLabel.setForeground(Color.WHITE);
         titleBarKillsInputLabel.setFont(font);
 
-        titleBarKillsInputValueLabel  = new JLabel("-");
+        titleBarKillsInputValueLabel = new JLabel("-");
         titleBarKillsInputValueLabel.setBorder(border);
         titleBarKillsInputValueLabel.setForeground(Color.BLUE);
         titleBarKillsInputValueLabel.setFont(font);
@@ -381,14 +391,34 @@ public class MainWindow extends JFrame {
         titleBarTimerContainer.add(connTimerLabel);
         titleBarTimerContainer.setVisible(false);
 
-        JPanel connMsgPanel = new JPanel(new FlowLayout(FlowLayout.CENTER, 0, 0));
+        JPanel leftContainer = new JPanel(new FlowLayout(FlowLayout.LEFT, 0, 0));
+        leftContainer.setBorder(ComponentUtils.NO_BORDER);
+        leftContainer.setBackground(UiConstants.COLOR__TITLE_BAR__BG);
+        leftContainer.add(appLabel);
+
+        pingLabel = new JLabel("xxx");
+        pingLabel.setBorder(border);
+        pingLabel.setFont(ResourceFactory.getRobotoFont());
+        pingLabel.setForeground(Color.WHITE);
+
+        titleBarServerPanel = new JPanel(new FlowLayout(FlowLayout.LEFT, 0, 0));
+        titleBarServerPanel.setBackground(UiConstants.COLOR__STATUS_BAR__DISCONNECTED__BG);
+        titleBarServerPanel.add(titleBarServerLabel);
+        titleBarServerPanel.add(pingLabel);
+        titleBarServerPanel.add(ComponentUtils.createTitleSeparatorLabel());
+        titleBarServerPanel.setVisible(false);
+
+        connMsgPanel = new JPanel(new FlowLayout(FlowLayout.CENTER, 0, 0));
+        connMsgPanel.setPreferredSize(new Dimension(400, 25));
         connMsgPanel.setBackground(UiConstants.COLOR__STATUS_BAR__DISCONNECTED__BG);
-        connMsgPanel.add(appLabel);
-        connMsgPanel.add(separatorLabel);
-        connMsgPanel.add(titleBarServerLabel);
+//        connMsgPanel.add(appLabel);
+//        connMsgPanel.add(separatorLabel);
+        connMsgPanel.add(titleBarServerPanel);
+//        connMsgPanel.add(pingLabel);
+//        connMsgPanel.add(ComponentUtils.createTitleSeparatorLabel());
 //        connMsgPanel.add(connStatusLabel);
         connMsgPanel.add(titleBarInputContainer);
-        connMsgPanel.add(killerInfoContainer);
+//        connMsgPanel.add(killerInfoContainer);
         connMsgPanel.add(titleBarTimerContainer);
         MouseDragListener mouseDragListener = new MouseDragListener(this);
         connMsgPanel.addMouseListener(mouseDragListener);
@@ -433,17 +463,35 @@ public class MainWindow extends JFrame {
         });
 
         JPanel titleBarButtonContainer = new JPanel(new FlowLayout(FlowLayout.LEFT, 0, 0));
-        titleBarButtonContainer.setBackground(UiConstants.COLOR__STATUS_BAR__DISCONNECTED__BG);
+//        titleBarButtonContainer.setBackground(UiConstants.COLOR__STATUS_BAR__DISCONNECTED__BG);
+        titleBarButtonContainer.setBackground(UiConstants.COLOR__TITLE_BAR__BG);
         titleBarButtonContainer.add(disconnectButton);
         titleBarButtonContainer.add(switchOffButton);
         titleBarButtonContainer.add(titleBarMinimizeLabel);
+
+
+//        pingContainer = new JPanel();
+//        pingContainer.setLayout(new FlowLayout(FlowLayout.RIGHT, 0, 0));
+//        pingContainer.add(pingLabel);
+//        pingContainer.setPreferredSize(new Dimension(80, 25));
+//        pingContainer.setMaximumSize(new Dimension(80, 25));
+//        pingContainer.setVisible(false);
+
+
+        mainBarMainContainer = new JPanel();
+        mainBarMainContainer.setLayout(new BoxLayout(mainBarMainContainer, BoxLayout.X_AXIS));
+        mainBarMainContainer.setBackground(UiConstants.COLOR__STATUS_BAR__DISCONNECTED__BG);
+//        mainBarMainContainer.add(pingContainer);
+        mainBarMainContainer.add(connMsgPanel);
 
         JPanel container = new JPanel();
         container.setLayout(new BorderLayout());
         container.setPreferredSize(new Dimension(200, 25));
         container.setMaximumSize(new Dimension(INFINITE_SIZE, 25));
         container.setBackground(UiConstants.COLOR__STATUS_BAR__DISCONNECTED__BG);
-        container.add(connMsgPanel, BorderLayout.CENTER);
+        container.add(leftContainer, BorderLayout.WEST);
+//        container.add(connMsgPanel, BorderLayout.CENTER);
+        container.add(mainBarMainContainer, BorderLayout.CENTER);
         container.add(titleBarButtonContainer, BorderLayout.EAST);
 
         return container;
@@ -524,6 +572,9 @@ public class MainWindow extends JFrame {
 
 
     private void handleServerDisconnect() {
+        int connectionTime = connectionStartTime == null? 0: (int) Duration.between(connectionStartTime, Instant.now()).getSeconds();
+        connectionStartTime = null;
+//        pingContainer.setVisible(false);
         disconnectButton.setVisible(false);
         queueTimer.stop();
 //        displayQueueTimer(0);
@@ -533,7 +584,8 @@ public class MainWindow extends JFrame {
 //        connStatusLabel.setVisible(true);
         killerInfoContainer.setVisible(false);
 //        titleBarTimerContainer.setVisible(false);
-        messagePanel.setVisible(false);
+//        messagePanel.setVisible(false);
+        showMessage(MSG__LAST_CONNECTION_DURATION + TimeUtil.formatTimeUpToHours(connectionTime), 10000);
 //        serverPanel.refreshClear();
 
         pack();
@@ -548,17 +600,18 @@ public class MainWindow extends JFrame {
     }
 
     private void handleLobbyConnect() {
+        connectionStartTime = Instant.now();
+//        pingContainer.setVisible(true);
         changeTitleBarColor(UiConstants.COLOR__STATUS_BAR__CONNECTED__BG, Color.WHITE);
         disconnectButton.setVisible(true);
         queueTimer.stop();
 //        connStatusLabel.setText(MSG__STATUS__CONNECTED);
         survivalInputPanel.setVisible(false);
-        messagePanel.setVisible(false);
+        hideMessage();
         pack();
     }
 
     private void handleServerInfoUpdated(Server server) {
-        System.out.println("server: " + server);
         refreshServerInfoOnTitleBar(server);
     }
 
@@ -598,7 +651,6 @@ public class MainWindow extends JFrame {
         genericTimer.restart();
         genericStopwatch.reset();
         genericStopwatch.start();
-//        changeTitleBarColor(UiConstants.COLOR__STATUS_BAR__CONNECTED__BG, Color.WHITE);
         titleBarTimerContainer.setVisible(true);
     }
 
@@ -606,7 +658,6 @@ public class MainWindow extends JFrame {
         genericStopwatch.stop();
         displayGenericTimer(genericStopwatch.getSeconds());
         genericTimer.stop();
-//        changeTitleBarColor(UiConstants.COLOR__STATUS_BAR__DISCONNECTED__BG, Color.WHITE);
     }
 
     private void handleMatchManualInput(Match match) {
@@ -615,7 +666,8 @@ public class MainWindow extends JFrame {
 
     private void changeTitleBarColor(Color bgColor, Color fgColor) {
         Queue<Component> queue = new LinkedList<>();
-        queue.add(titleBar);
+//        queue.add(titleBar);
+        queue.add(mainBarMainContainer);
 
         while (!queue.isEmpty()) {
             Component c = queue.poll();
@@ -625,10 +677,6 @@ public class MainWindow extends JFrame {
                 panel.setBackground(bgColor);
                 queue.addAll(Arrays.asList(panel.getComponents()));
             }
-//            else if (c instanceof JLabel) {
-//                JLabel label = (JLabel) c;
-//                label.setForeground(fgColor);
-//            }
         }
 
         appLabel.setForeground(Color.YELLOW);
@@ -652,23 +700,20 @@ public class MainWindow extends JFrame {
         if (match.getEscaped() == null) {
             titleBarSurvivalInputEmptyLabel.setVisible(true);
             titleBarSurvivalInputIconLabel.setVisible(false);
-        }
-        else {
+        } else {
             titleBarSurvivalInputEmptyLabel.setVisible(false);
             titleBarSurvivalInputIconLabel.setVisible(true);
 
             if (match.getEscaped()) {
                 titleBarSurvivalInputIconLabel.setIcon(ResourceFactory.getIcon(Icon.THUMBS_UP_BLUE));
-            }
-            else {
+            } else {
                 titleBarSurvivalInputIconLabel.setIcon(ResourceFactory.getIcon(Icon.THUMBS_DOWN_BLUE));
             }
         }
 
         if (match.getKillCount() == null) {
             titleBarKillsInputValueLabel.setText("-");
-        }
-        else {
+        } else {
             titleBarKillsInputValueLabel.setText(String.valueOf(match.getKillCount()));
         }
     }
@@ -676,16 +721,44 @@ public class MainWindow extends JFrame {
 
     private void refreshServerInfoOnTitleBar(Server server) {
         if (server == null || StringUtils.isBlank(server.getCountryCode())) {
-            titleBarServerLabel.setVisible(false);
+            titleBarServerPanel.setVisible(false);
             return;
         }
 
         String msg = server.getCountryCode();
-        msg += StringUtils.isNotBlank(server.getCity()) ? " - " + server.getCity() : "";
-        msg += "  |  ";
+        String city = server.getCity();
+
+        if (StringUtils.isNotBlank(city)) {
+            if (city.length() > 17) {
+                city = city.substring(0, 17) + "...";
+            }
+            msg += " - " + city;
+        }
+
+        Integer latency = server.getLatency();
+        if (latency != null) {
+            String pingMsg = "(" + latency + " ms)";
+            if (latency <= 80) {
+                pingLabel.setForeground(Color.BLUE);
+            } else if (latency <= 150) {
+                pingLabel.setForeground(Color.YELLOW);
+            } else {
+                pingLabel.setForeground(Color.RED);
+            }
+            pingLabel.setText(pingMsg);
+            pingLabel.setVisible(true);
+        }
+        else {
+            pingLabel.setVisible(false);
+        }
 
         titleBarServerLabel.setText(msg);
-        titleBarServerLabel.setVisible(true);
+        titleBarServerPanel.setVisible(true);
+
+    }
+
+    public void updatePing(int ping) {
+        pingLabel.setText((ping < 0 ? "?" : ping) + " ms  |");
     }
 
 

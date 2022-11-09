@@ -1,13 +1,14 @@
 package net.lobby_simulator_companion.loop.domain;
 
 import lombok.Builder;
+import lombok.Data;
 import lombok.Value;
 
 /**
  * @author NickyRamone
  */
 @Builder
-@Value
+@Data
 public class Server {
 
     private final String address;
@@ -19,5 +20,6 @@ public class Server {
     private Double latitude;
     private Double longitude;
     private String isp;
+    private Integer latency;
 
 }

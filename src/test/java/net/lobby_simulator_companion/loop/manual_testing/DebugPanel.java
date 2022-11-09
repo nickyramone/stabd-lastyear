@@ -2,12 +2,13 @@ package net.lobby_simulator_companion.loop.manual_testing;
 
 import lombok.extern.slf4j.Slf4j;
 import net.lobby_simulator_companion.loop.DevModeConfigurer;
+import net.lobby_simulator_companion.loop.Factory;
+import net.lobby_simulator_companion.loop.domain.Connection;
 import net.lobby_simulator_companion.loop.domain.Killer;
 import net.lobby_simulator_companion.loop.domain.RealmMap;
 import net.lobby_simulator_companion.loop.domain.stats.KillerStats;
 import net.lobby_simulator_companion.loop.domain.stats.MapStats;
 import net.lobby_simulator_companion.loop.domain.stats.Stats;
-import net.lobby_simulator_companion.loop.service.DbdLogMonitor;
 import net.lobby_simulator_companion.loop.service.GameEvent;
 import net.lobby_simulator_companion.loop.service.GameStateManager;
 import net.lobby_simulator_companion.loop.service.LoopDataService;
@@ -16,15 +17,15 @@ import net.lobby_simulator_companion.loop.util.TimeUtil;
 import javax.swing.*;
 import java.awt.*;
 import java.awt.datatransfer.StringSelection;
-import java.io.FileWriter;
-import java.io.IOException;
-import java.util.ArrayList;
+import java.net.InetAddress;
+import java.net.UnknownHostException;
 import java.util.List;
-import java.util.Map;
-import java.util.Random;
+import java.util.Timer;
+import java.util.*;
 import java.util.stream.Collectors;
 
 import static java.util.stream.Collectors.toList;
+import static net.lobby_simulator_companion.loop.util.LangUtil.unchecked;
 
 /**
  * A panel for debugging purposes.
@@ -36,20 +37,21 @@ import static java.util.stream.Collectors.toList;
 public class DebugPanel extends JPanel {
 
     private JFrame frame;
-    private FileWriter logWriter;
     private LoopDataService dataService;
     private GameStateManager gameStateManager;
 
+    private Random random = new Random();
 
-    public DebugPanel(DbdLogMonitor logMonitor, LoopDataService dataService, GameStateManager gameStateManager) throws Exception {
+    private boolean connected;
+
+
+    public DebugPanel(LoopDataService dataService, GameStateManager gameStateManager) throws Exception {
         this.dataService = dataService;
-        this.logWriter = new FileWriter(logMonitor.getLogFile());
         this.gameStateManager = gameStateManager;
 
         DevModeConfigurer.configureMockSteamProfileDaoResponse("1", "Dummy Name 1");
         DevModeConfigurer.configureMockSteamProfileDaoResponse("2", "Dummy Name 2");
 
-        log.debug("Monitoring log file: {}", logMonitor.getLogFile());
         UIManager.setLookAndFeel(UIManager.getSystemLookAndFeelClassName());
 
         setOpaque(true);
@@ -70,40 +72,55 @@ public class DebugPanel extends JPanel {
         addComponents(contentPanel);
 
         frame.setContentPane(contentPanel);
+
+//        startPingSimulator();
     }
+
+    private void startPingSimulator() {
+        java.util.Timer timer = new Timer();
+        timer.scheduleAtFixedRate(new TimerTask() {
+            @Override
+            public void run() {
+                if (connected) {
+                    Factory.mainWindow().updatePing(random.nextInt(200));
+                }
+            }
+        }, 0, 500);
+    }
+
 
     private void addComponents(JPanel container) {
         JButton button;
 
-        JPanel connPanel = new JPanel();
-        connPanel.setLayout(new BoxLayout(connPanel, BoxLayout.X_AXIS));
-        container.add(connPanel);
-        button = new JButton("Search Match");
-        button.addActionListener(e -> simulateMatchSearch());
-        connPanel.add(button);
-        button = new JButton("Cancel Match Search");
-        button.addActionListener(e -> simulateMatchSearchCancel());
-        connPanel.add(button);
+//        JPanel connPanel = new JPanel();
+//        connPanel.setLayout(new BoxLayout(connPanel, BoxLayout.X_AXIS));
+//        container.add(connPanel);
+//        button = new JButton("Search Match");
+//        button.addActionListener(e -> simulateMatchSearch());
+//        connPanel.add(button);
+//        button = new JButton("Cancel Match Search");
+//        button.addActionListener(e -> simulateMatchSearchCancel());
+//        connPanel.add(button);
+//
+//        JPanel lobbyPanel = new JPanel();
+//        lobbyPanel.setLayout(new BoxLayout(lobbyPanel, BoxLayout.X_AXIS));
+//        container.add(lobbyPanel);
+//        button = new JButton("Leave Lobby");
+//        button.addActionListener(e -> simulateLobbyLeave());
+//        lobbyPanel.add(button);
 
-        JPanel lobbyPanel = new JPanel();
-        lobbyPanel.setLayout(new BoxLayout(lobbyPanel, BoxLayout.X_AXIS));
-        container.add(lobbyPanel);
-        button = new JButton("Leave Lobby");
-        button.addActionListener(e -> simulateLobbyLeave());
-        lobbyPanel.add(button);
-
-        JPanel matchPanel = new JPanel();
-        matchPanel.setLayout(new BoxLayout(matchPanel, BoxLayout.X_AXIS));
-        container.add(matchPanel);
-        button = new JButton("Generate Map");
-        button.addActionListener(e -> simulateMapGeneration());
-        matchPanel.add(button);
-        button = new JButton("Start Match");
-        button.addActionListener(e -> simulateMatchStart());
-        matchPanel.add(button);
-        button = new JButton("End Match");
-        button.addActionListener(e -> simulateMatchEnd());
-        matchPanel.add(button);
+//        JPanel matchPanel = new JPanel();
+//        matchPanel.setLayout(new BoxLayout(matchPanel, BoxLayout.X_AXIS));
+//        container.add(matchPanel);
+//        button = new JButton("Generate Map");
+//        button.addActionListener(e -> simulateMapGeneration());
+//        matchPanel.add(button);
+//        button = new JButton("Start Match");
+//        button.addActionListener(e -> simulateMatchStart());
+//        matchPanel.add(button);
+//        button = new JButton("End Match");
+//        button.addActionListener(e -> simulateMatchEnd());
+//        matchPanel.add(button);
 
         JPanel serverPanel = new JPanel();
         serverPanel.setLayout(new BoxLayout(serverPanel, BoxLayout.X_AXIS));
@@ -115,18 +132,18 @@ public class DebugPanel extends JPanel {
         button.addActionListener(e -> simulateServerDisconnect());
         serverPanel.add(button);
 
-        JPanel killerPanel = new JPanel();
-        killerPanel.setLayout(new BoxLayout(killerPanel, BoxLayout.X_AXIS));
-        container.add(killerPanel);
-        button = new JButton("Detect Killer Player A");
-        button.addActionListener(e -> simulateNewKillerPlayer(1));
-        killerPanel.add(button);
-        button = new JButton("Detect Killer Player B");
-        button.addActionListener(e -> simulateNewKillerPlayer(2));
-        killerPanel.add(button);
-        button = new JButton("Killer Character");
-        button.addActionListener(e -> simulateRandomKillerCharacter());
-        killerPanel.add(button);
+//        JPanel killerPanel = new JPanel();
+//        killerPanel.setLayout(new BoxLayout(killerPanel, BoxLayout.X_AXIS));
+//        container.add(killerPanel);
+//        button = new JButton("Detect Killer Player A");
+//        button.addActionListener(e -> simulateNewKillerPlayer(1));
+//        killerPanel.add(button);
+//        button = new JButton("Detect Killer Player B");
+//        button.addActionListener(e -> simulateNewKillerPlayer(2));
+//        killerPanel.add(button);
+//        button = new JButton("Killer Character");
+//        button.addActionListener(e -> simulateRandomKillerCharacter());
+//        killerPanel.add(button);
 
         JPanel statsPanel = new JPanel();
         container.add(statsPanel);
@@ -139,59 +156,21 @@ public class DebugPanel extends JPanel {
         statsPanel.add(button);
     }
 
-    private void simulateMatchSearch() {
-        writeLog("--- REQUEST: [POST https://latest.live.dbd.bhvronline.com/api/v1/queue] ---");
-    }
-
-    private void simulateMatchSearchCancel() {
-        writeLog("--- RESPONSE: code 200, request [POST https://latest.live.dbd.bhvronline.com/api/v1/queue/cancel] ---");
-    }
-
     private void simulateServerConnect() {
-        gameStateManager.fireEvent(GameEvent.CONNECTED_TO_LOBBY, "1.2.3.4");
+        Connection connection;
+        try {
+            connection = new Connection(InetAddress.getByName("127.0.0.1"), 1000, InetAddress.getByName("1.2.3.4"), 2000);
+        } catch (UnknownHostException e) {
+            throw new RuntimeException(e);
+        }
+        connection.setLatency(random.nextInt(1500));
+        gameStateManager.fireEvent(GameEvent.CONNECTED_TO_LOBBY, connection);
+        connected = true;
     }
 
     private void simulateServerDisconnect() {
+        connected = false;
         gameStateManager.fireEvent(GameEvent.DISCONNECTED);
-    }
-
-    private void simulateLobbyLeave() {
-        simulateMatchSearchCancel();
-    }
-
-    private void simulateMapGeneration() {
-        writeLog("--- ProceduralLevelGeneration: InitLevel: Theme: Hospital Map: Hos_Treatment ---");
-    }
-
-    private void simulateMatchStart() {
-        writeLog("--- ^^^ OnEnteringOnlineMultiplayer ^^^ ---");
-    }
-
-    private void simulateMatchEnd() {
-        writeLog("--- PUT https://latest.live.dbd.bhvronline.com/api/v1/softWallet/put/analytics ---");
-    }
-
-    private void simulateNewKillerPlayer(int id) {
-        writeLog(String.format(
-                "--- Mirrors: [FOnlineSessionMirrors::AddSessionPlayer] Session:GameSession PlayerId:ab-cd-ef-1|%d ---", id));
-
-        simulateRandomKillerCharacter();
-    }
-
-    private void simulateRandomKillerCharacter() {
-        String[] outfits = new String[]{"TR", "HB", "BE", "CA"};
-        String outfit = outfits[new Random().nextInt(outfits.length)];
-        writeLog(String.format("--- LogCustomization: --> %s_123 ---", outfit));
-    }
-
-
-    private void writeLog(String s) {
-        try {
-            logWriter.write(s + "\n");
-            logWriter.flush();
-        } catch (IOException e) {
-            log.error("Failed to write to log file", e);
-        }
     }
 
 

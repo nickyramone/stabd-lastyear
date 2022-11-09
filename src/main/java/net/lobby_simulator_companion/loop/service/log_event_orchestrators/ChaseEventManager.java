@@ -77,7 +77,6 @@ public class ChaseEventManager {
 
     public ChaseEventManager(DbdLogMonitor dbdLogMonitor) {
         this.dbdLogMonitor = dbdLogMonitor;
-
         initListeners();
     }
 
