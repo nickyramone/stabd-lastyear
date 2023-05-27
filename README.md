@@ -1,18 +1,20 @@
-# What is Stabd?
+# What is Stabd-LastYear?
 
-Stabd (short for "Stats by Daylight") is a tool to gather basic stats of your matches in "Dead By Daylight" (DBD).
-It is basically a hacked stripped version of the (discontinued)
-[LOOP (Lobby Simulator Companion)](https://github.com/nickyramone/LobbySimulatorCompanion) project.
+It's an app that provides you real-time ping indicator while playing the "Last Year" game, add information
+about the "Fiend" you are facing, as well as keep track of your own performance stats.
+This project is a fork of the stabd [Stabd (Stats By Daylight)](https://github.com/nickyramone/stabd) project
+(which is aimed at the "Dead By Daylight" game).
 
 # What features does it have?
 
+- Fiend player detection
+  - Do you want to write some notes about the Fiend player you just faced? Now you can. 
 - Aggregate statistics of escape and kill counts:
   - Escapes in a row, deaths in a row, kill rate; stats by day, week, year, etc. 
 - Lobby region identification: 
-  - See from what city is the server you are connecting to. 
-- Game server latency/ping
-  - Note that this is not updated on real time. It checks the latency upon connection to the server,
-    but it should be a good indicator of the expected latency you are going to have throughout the match.  
+  - See from what city is the host (Fiend) you are connecting to. 
+- Real-time ping
+  - Live ping
 - Stopwatch timer.
 
 # How does it work?
@@ -23,17 +25,18 @@ will be aggregated in many different convenient ways.
 
 ### Summary of hotkeys:
 
-| Hotkey                    | Description                                                                          |
-|---------------------------|:-------------------------------------------------------------------------------------|
-| **\<Ctrl\> + E**          | Indicate that you escaped (survived) the trial.                                      |
-| **\<Ctrl\> + D**          | Indicate that you died in the trial.                                                 |
-| **\<Ctrl\> + 0**          | Indicate that the killer got 0 kills.                                                |
-| **\<Ctrl\> + 1**          | Indicate that the killer got 1 kills.                                                |
-| **\<Ctrl\> + 2**          | Indicate that the killer got 2 kills.                                                |
-| **\<Ctrl\> + 3**          | Indicate that the killer got 3 kills.                                                |
-| **\<Ctrl\> + 4**          | Indicate that the killer got 4 kills.                                                |
-| **\<Ctrl\> + \<Enter\>**  | Submit info (survival + kills) for this match. Once you submit, it cannot be edited. |
-| **\<F4\>**                | Start/stop timer. You can use it to measure whatever you want.                       |
+| Hotkey                    | Description                                                                            |
+|---------------------------|:---------------------------------------------------------------------------------------|
+| **\<Ctrl\> + E**          | Indicate that you escaped (survived) the trial.                                        |
+| **\<Ctrl\> + D**          | Indicate that you died at the end of the trial.                                        |
+| **\<Ctrl\> + 0**          | Indicate that the fiend got 0 kills.                                                   |
+| **\<Ctrl\> + 1**          | Indicate that the fiend got 1 kills.                                                   |
+| **\<Ctrl\> + 2**          | Indicate that the fiend got 2 kills.                                                   |
+| **\<Ctrl\> + 3**          | Indicate that the fiend got 3 kills.                                                   |
+| **\<Ctrl\> + 4**          | Indicate that the fiend got 4 kills.                                                   |
+| **\<Ctrl\> + 5**          | Indicate that the fiend got 5 kills.                                                   |
+| **\<Ctrl\> + \<Enter\>**  | Submit info (survival + kills) for this match. Once you submit, it cannot be edited.   |
+| **\<F4\>**                | Start/stop timer. You can use it to measure whatever you want.                         |
 
 **Important**: Hotkeys will only be accepted if you have focus on the DBD window or Stabd window. Trying to use the
 hotkeys while the focus is on any other application will have no effect.
@@ -76,13 +79,13 @@ To prevent this, we recommend doing backups of the `stabd.dat` file.
 ## Hey! My antivirus is giving me a warning about the exe file!
 
 Some antivirus throw a false positive because the executable file is not signed. This requires setting up a certificate
-to validate with Microsoft Windows, and I have no intention to do that.
+to validate with Microsoft Windows, and I have no intention of doing that.
 
-## Can I get banned by EAC (Easy Anti Cheat) for using STABD?
+## Can I get banned by an anti-cheat system for using STABD?
 
 No.\
-Stabd does not modify or interact with the game files, does not hook intself to any executables and, more importantly, you cannot gain any
-in-game advantage by using it.
+Stabd does not modify or interact with the game files, does not hook intself to any executables and, more importantly,
+does not give you any in-game advantage.
 
 ## How can I contact the author?
 
