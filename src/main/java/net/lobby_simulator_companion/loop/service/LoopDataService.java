@@ -14,6 +14,9 @@ import org.apache.commons.lang3.StringUtils;
 
 import java.io.FileNotFoundException;
 import java.io.IOException;
+import java.net.InetAddress;
+import java.security.MessageDigest;
+import java.security.NoSuchAlgorithmException;
 import java.time.ZoneId;
 import java.util.ArrayList;
 import java.util.Date;
@@ -55,7 +58,7 @@ public class LoopDataService {
     public void start() throws IOException {
         loopData = loadData();
         players = loopData.getPlayers().stream()
-                .collect(toConcurrentMap(Player::getSteamId64, identity()));
+                .collect(toConcurrentMap(Player::getIpHash, identity()));
 
         // schedule thread for saving dirty data
         Timer timer = new Timer();
@@ -141,10 +144,53 @@ public class LoopDataService {
         return Optional.ofNullable(steamId).filter(StringUtils::isNotBlank).map(players::get);
     }
 
+    public Optional<Player> getPlayerByInetAddress(InetAddress inetAddress) {
+        return getPlayerByIpHash(hashInetAddress(inetAddress));
+    }
+
+    public Optional<Player> getPlayerByIpHash(String ipHash) {
+        return Optional.ofNullable(players.get(ipHash));
+    }
+
+
     public void addPlayer(Player player) {
-        players.put(player.getSteamId64(), player);
+//        players.put(player.getSteamId64(), player);
+        players.put(player.getIpHash(), player);
         dirty = true;
     }
+
+    private String hashInetAddress(InetAddress address) {
+        return hexToString(hashWithMd5(address.getAddress()));
+    }
+
+    private byte[] hashWithMd5(byte[] bytes) {
+
+        MessageDigest md5Digest;
+        try {
+            md5Digest = MessageDigest.getInstance("MD5");
+        } catch (NoSuchAlgorithmException e) {
+            throw new RuntimeException(e);
+        }
+
+        md5Digest.update(bytes);
+
+        return md5Digest.digest();
+    }
+
+    private String hexToString(byte[] bytes) {
+
+        StringBuilder hexString = new StringBuilder();
+        for (byte b : bytes) {
+            String hex = Integer.toHexString(0xFF & b);
+            if (hex.length() == 1) {
+                hexString.append('0');
+            }
+            hexString.append(hex);
+        }
+
+        return hexString.toString();
+    }
+
 
     public void notifyChange() {
         dirty = true;
@@ -164,6 +210,7 @@ public class LoopDataService {
             log.error("Failed to save data.", e);
         }
     }
+
 
     public void registerListener(EventListener eventListener) {
         eventSupport.registerListener(eventListener);

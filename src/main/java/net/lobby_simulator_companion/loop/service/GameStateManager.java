@@ -8,6 +8,7 @@ import lombok.Getter;
 import lombok.Setter;
 import lombok.extern.slf4j.Slf4j;
 import net.lobby_simulator_companion.loop.config.AppProperties;
+import net.lobby_simulator_companion.loop.domain.Connection;
 import net.lobby_simulator_companion.loop.domain.Killer;
 import net.lobby_simulator_companion.loop.domain.Player;
 import net.lobby_simulator_companion.loop.domain.RealmMap;
@@ -15,19 +16,16 @@ import net.lobby_simulator_companion.loop.domain.stats.Match;
 import net.lobby_simulator_companion.loop.repository.SteamProfileDao;
 import net.lobby_simulator_companion.loop.service.jna.WindowService;
 import net.lobby_simulator_companion.loop.service.log_event_orchestrators.ChaseEventManager;
-import net.lobby_simulator_companion.loop.service.log_processing.DbdLogEvent;
 import net.lobby_simulator_companion.loop.util.Stopwatch;
 import net.lobby_simulator_companion.loop.util.event.EventListener;
 import net.lobby_simulator_companion.loop.util.event.EventSupport;
 import net.lobby_simulator_companion.loop.util.event.SwingEventSupport;
 
-import java.io.IOException;
-import java.net.InetSocketAddress;
+import java.net.InetAddress;
 import java.time.LocalDateTime;
 import java.util.Optional;
 
 import static javax.swing.SwingUtilities.invokeLater;
-import static net.lobby_simulator_companion.loop.service.DbdLogMonitor.State;
 
 /**
  * The purpose of this class is to store state about game events (e.g., information about current killer player,
@@ -52,6 +50,7 @@ public class GameStateManager implements NativeKeyListener {
     private static final int KEYCODE__2 = 50;
     private static final int KEYCODE__3 = 51;
     private static final int KEYCODE__4 = 52;
+    private static final int KEYCODE__5 = 53;
     private static final int KEYCODE__D = 68;
     private static final int KEYCODE__E = 69;
     private static final int KEY_MODIFIER__LEFT_CTRL = 2;
@@ -92,8 +91,8 @@ public class GameStateManager implements NativeKeyListener {
 
 
     private void init() {
-        chaseEventManager.registerEventListener(ChaseEventManager.Event.CHASE_START, evt -> fireEvent(GameEvent.CHASE_STARTED, evt.getValue()));
-        chaseEventManager.registerEventListener(ChaseEventManager.Event.CHASE_END, evt -> fireEvent(GameEvent.CHASE_ENDED));
+//        chaseEventManager.registerEventListener(ChaseEventManager.Event.CHASE_START, evt -> fireEvent(GameEvent.CHASE_STARTED, evt.getValue()));
+//        chaseEventManager.registerEventListener(ChaseEventManager.Event.CHASE_END, evt -> fireEvent(GameEvent.CHASE_ENDED));
 
         dataService.registerListener(evt -> fireEvent(GameEvent.UPDATED_STATS));
 
@@ -137,14 +136,17 @@ public class GameStateManager implements NativeKeyListener {
     }
 
 
-    private void handleServerConnect(InetSocketAddress inetSocketAddress) {
+    public void handleServerConnect(Connection connection) {
         log.debug("Game event: connected to lobby");
         queueStopwatch.stop();
 
         currentMatch = new Match();
         currentMatch.incrementLobbiesFound();
         currentMatch.incrementSecondsQueued(getQueueTimeInSeconds());
-        fireEvent(GameEvent.CONNECTED_TO_LOBBY, inetSocketAddress.getHostName());
+        fireEvent(GameEvent.CONNECTED_TO_LOBBY, connection);
+
+        PlayerDto killerPlayer = new PlayerDto(null, null, connection.getRemoteAddr());
+        handleNewKillerPlayer(killerPlayer);
     }
 
 
@@ -197,36 +199,40 @@ public class GameStateManager implements NativeKeyListener {
 
     private void handleNewKillerPlayer(PlayerDto playerDto) {
         new Thread(() -> {
-            String playerName;
-            try {
-                playerName = steamProfileDao.getPlayerName(playerDto.getSteamId());
-            } catch (IOException e) {
-                log.error("Failed to retrieve player's name for steam id#{}.", playerDto.getSteamId());
-                playerName = "";
-            }
-            String steamId = playerDto.getSteamId();
-            Optional<Player> storedPlayer = dataService.getPlayerBySteamId(steamId);
+//            String playerName;
+//            try {
+//                playerName = steamProfileDao.getPlayerName(playerDto.getSteamId());
+//            } catch (IOException e) {
+//                log.error("Failed to retrieve player's name for steam id#{}.", playerDto.getSteamId());
+//                playerName = "";
+//            }
+//            String steamId = playerDto.getSteamId();
+//            Optional<Player> storedPlayer = dataService.getPlayerBySteamId(steamId);
+            InetAddress inetAddress = playerDto.getInetAddress();
+            Optional<Player> storedPlayer = dataService.getPlayerByInetAddress(playerDto.getInetAddress());
             final Player player;
 
             if (!storedPlayer.isPresent()) {
-                log.debug("User #{} not found in the storage. Creating new entry...", steamId);
+                log.debug("User with address [{}] not found in the storage. Creating new entry...", inetAddress);
                 player = new Player();
-                player.setSteamId64(steamId);
+//                player.setSteamId64(steamId);
                 player.setDbdPlayerId(playerDto.getDbdId());
-                player.addName(playerName);
+                player.setIpAddress(inetAddress);
+//                player.addName(playerName);
                 player.incrementTimesEncountered();
                 dataService.addPlayer(player);
             } else {
-                log.debug("User '{}' (#{}) found in the storage. Updating entry...", playerName, steamId);
+                log.debug("User with address [{}] found in the storage. Updating entry...", inetAddress);
                 player = storedPlayer.get();
                 player.updateLastSeen();
-                player.addName(playerName);
+//                player.addName(playerName);
                 player.incrementTimesEncountered();
                 dataService.notifyChange();
             }
 
             currentMatch.setKillerPlayerSteamId64(player.getSteamId64());
             currentMatch.setKillerPlayerDbdId(player.getDbdPlayerId());
+            currentMatch.setKillerPlayerIpHash(player.getIpHash());
             invokeLater(() -> fireEvent(GameEvent.NEW_KILLER_PLAYER, player));
 
         }).start();
@@ -257,7 +263,8 @@ public class GameStateManager implements NativeKeyListener {
         if (currentMatch == null) {
             return Optional.empty();
         }
-        return dataService.getPlayerBySteamId(currentMatch.getKillerPlayerSteamId64());
+//        return dataService.getPlayerBySteamId(currentMatch.getKillerPlayerSteamId64());
+        return dataService.getPlayerByIpHash(currentMatch.getKillerPlayerIpHash());
     }
 
     public int getMatchDurationInSeconds() {
@@ -317,6 +324,8 @@ public class GameStateManager implements NativeKeyListener {
             killCount = 3;
         } else if (keyCode == KEYCODE__4 && ctrlPressed) {
             killCount = 4;
+        } else if (keyCode == KEYCODE__5 && ctrlPressed) {
+            killCount = 5;
         } else if (keyCode == KEYCODE__D && ctrlPressed) {
             escaped = false;
         } else if (keyCode == KEYCODE__E && ctrlPressed) {
@@ -380,16 +389,28 @@ public class GameStateManager implements NativeKeyListener {
             return;
         }
 
-        if (escaped != null && killCount != null && ((escaped && killCount == 4) || (!escaped && killCount == 0))) {
+        if (escaped != null && killCount != null && ((escaped && killCount == 5) || (!escaped && killCount == 0))) {
             // invalid input
             return;
         }
 
+        getKillerPlayer().ifPresent(player -> {
+            if (escaped) {
+                player.incrementEscapes();
+            }
+            else {
+                player.incrementDeaths();
+            }
+            player.incrementMatchesPlayed();
+        });
+
         dataService.getStats().addMatchStats(currentMatch);
         dataService.getMatchLog().add(currentMatch);
         dataService.notifyChange();
-        currentMatch = new Match();
+
+//        currentMatch = new Match();
         fireEvent(GameEvent.UPDATED_STATS);
     }
+
 
 }

@@ -73,7 +73,7 @@ public class DebugPanel extends JPanel {
 
         frame.setContentPane(contentPanel);
 
-//        startPingSimulator();
+        startPingSimulator();
     }
 
     private void startPingSimulator() {
@@ -164,7 +164,8 @@ public class DebugPanel extends JPanel {
             throw new RuntimeException(e);
         }
         connection.setLatency(random.nextInt(1500));
-        gameStateManager.fireEvent(GameEvent.CONNECTED_TO_LOBBY, connection);
+//        gameStateManager.fireEvent(GameEvent.CONNECTED_TO_LOBBY, connection);
+        gameStateManager.handleServerConnect(connection);
         connected = true;
     }
 

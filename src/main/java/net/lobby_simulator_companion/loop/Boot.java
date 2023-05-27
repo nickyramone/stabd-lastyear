@@ -106,11 +106,11 @@ public class Boot {
         if (!Factory.appProperties().getBoolean("debug")) {
             log.info("Starting net traffic sniffer...");
             try {
-                connectionManager = Factory.dedicatedServerConnectionManager(localAddr, new SnifferListener() {
+                connectionManager = Factory.p2pConnectionManager(localAddr, new SnifferListener() {
 
                     @Override
                     public void notifyMatchConnect(Connection connection) {
-                        Factory.gameStateManager().fireEvent(GameEvent.CONNECTED_TO_LOBBY, connection);
+                        Factory.gameStateManager().handleServerConnect(connection);
                     }
 
                     public void notifyMatchDisconnect() {
@@ -119,6 +119,7 @@ public class Boot {
 
                     @Override
                     public void notifyPingUpdate(int ping) {
+                        Factory.mainWindow().updatePing(ping);
                     }
 
                     @Override
@@ -169,11 +170,11 @@ public class Boot {
 
         info.addActionListener(e -> {
             String message = ""
-                    + appProperties.get("app.name.short") + " is a tool to help Dead By Daylight players keep track of some basic game stats.\n\n"
+                    + appProperties.get("app.name.short") + " is a tool to help \"Last Year\" game players keep track of some basic game stats.\n\n"
                     + "Credits:\n"
                     + "=======\n"
                     + "Author: NickyRamone\n"
-                    + "Based on the LOOP (Lobby Simulator Companion) project";
+                    + "Based on the STABD (Stats By Daylight) project";
 
             String title = appProperties.get("app.name") + " " + appProperties.get("app.version");
             JOptionPane.showMessageDialog(null, message, title, JOptionPane.INFORMATION_MESSAGE);

@@ -6,6 +6,9 @@ import lombok.Builder;
 import lombok.Data;
 
 import java.io.Serializable;
+import java.net.InetAddress;
+import java.security.MessageDigest;
+import java.security.NoSuchAlgorithmException;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
@@ -28,6 +31,7 @@ public class Player implements Serializable, Cloneable {
 
     private static final int MAX_NAMES_STORED = 10;
 
+    private String ipHash;
 
     private String steamId64;
 
@@ -87,6 +91,39 @@ public class Player implements Serializable, Cloneable {
          */
         names = new ArrayList<>(MAX_NAMES_STORED);
         rating = Rating.UNRATED;
+    }
+
+    public void setIpAddress(InetAddress address) {
+        byte[] md5 = hashWithMd5(address.getAddress());
+        ipHash = hexToString(md5);
+    }
+
+    private byte[] hashWithMd5(byte[] bytes) {
+
+        MessageDigest md5Digest = null;
+        try {
+            md5Digest = MessageDigest.getInstance("MD5");
+        } catch (NoSuchAlgorithmException e) {
+            throw new RuntimeException(e);
+        }
+
+        md5Digest.update(bytes);
+
+        return md5Digest.digest();
+    }
+
+    private String hexToString(byte[] bytes) {
+
+        StringBuilder hexString = new StringBuilder();
+        for (byte b : bytes) {
+            String hex = Integer.toHexString(0xFF & b);
+            if (hex.length() == 1) {
+                hexString.append('0');
+            }
+            hexString.append(hex);
+        }
+
+        return hexString.toString();
     }
 
     public void updateLastSeen() {

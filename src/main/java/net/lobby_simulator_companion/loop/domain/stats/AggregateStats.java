@@ -37,6 +37,7 @@ public class AggregateStats {
     private int kill2s;
     private int kill3s;
     private int kill4s;
+    private int kill5s;
     private final Map<Killer, KillerStats> killersStats = new TreeMap<>();
     private final Map<RealmMap, MapStats> mapStats = new TreeMap<>();
 
@@ -83,6 +84,9 @@ public class AggregateStats {
         }
         else if (killCount == 4) {
             kill4s++;
+        }
+        else if (killCount == 5) {
+            kill5s++;
         }
     }
 
@@ -142,9 +146,9 @@ public class AggregateStats {
     }
 
     public float getKillRate() {
-        int matches = kill0s + kill1s + kill2s + kill3s + kill4s;
-        int survivors = 4 * matches;
-        int kills = kill1s + 2 * kill2s + 3 * kill3s + 4 * kill4s;
+        int matches = kill0s + kill1s + kill2s + kill3s + kill4s + kill5s;
+        int survivors = 5 * matches;
+        int kills = kill1s + 2 * kill2s + 3 * kill3s + 4 * kill4s + 5 * kill5s;
 
         if (matches == 0) {
             return 0;
@@ -179,6 +183,7 @@ public class AggregateStats {
         kill2s = 0;
         kill3s = 0;
         kill4s = 0;
+        kill5s = 0;
         killersStats.clear();
         mapStats.clear();
     }

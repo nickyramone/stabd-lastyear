@@ -77,6 +77,12 @@ public final class Factory {
                 () -> new DedicatedServerConnectionManager(localAddr, snifferListener)));
     }
 
+    public static ConnectionManager p2pConnectionManager(InetAddress localAddr, SnifferListener snifferListener) {
+
+        return getInstance(ConnectionManager.class, unchecked(
+                () -> new P2pConnectionManager(localAddr, snifferListener)));
+    }
+
     public static LoopRepository loopRepository() {
         return getInstance(LoopRepository.class,
                 () -> new LoopRepository(appProperties(), gson()));

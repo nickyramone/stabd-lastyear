@@ -7,6 +7,7 @@ import lombok.NoArgsConstructor;
 import net.lobby_simulator_companion.loop.domain.Killer;
 import net.lobby_simulator_companion.loop.domain.RealmMap;
 
+import java.net.InetAddress;
 import java.time.LocalDateTime;
 import java.util.Optional;
 
@@ -31,6 +32,8 @@ public class Match {
     private transient RealmMap realmMap;
     private transient String killerPlayerSteamId64;
     private transient String killerPlayerDbdId;
+//    private transient InetAddress killerPlayerInetAddress;
+    private transient String killerPlayerIpHash;
 
     public boolean escaped() {
         return Optional.ofNullable(escaped).orElse(false);

@@ -118,7 +118,7 @@ public class KillerLogProcessor extends AbstractDbdLogProcessor {
         String dbdPlayerId = matcher.group(1);
         String steamUserId = matcher.group(2);
         log.trace("Detected user connecting to lobby. dbd-id: {}; steam-id: {}", dbdPlayerId, steamUserId);
-        lastPlayer = new PlayerDto(steamUserId, dbdPlayerId);
+//        lastPlayer = new PlayerDto(steamUserId, dbdPlayerId);
 
         return true;
     }

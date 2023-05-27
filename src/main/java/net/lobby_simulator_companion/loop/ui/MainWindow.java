@@ -179,6 +179,8 @@ public class MainWindow extends JFrame {
         uiEventOrchestrator.registerListener(UiEvent.SERVER_INFO_UPDATED, evt -> handleServerInfoUpdated((Server) evt.getValue()));
         uiEventOrchestrator.registerListener(UiEvent.UPDATE_KILLER_PLAYER_TITLE_EXTRA,
                 evt -> refreshKillerPlayerSubtitleOnScreen((String) evt.getValue()));
+        uiEventOrchestrator.registerListener(UiEvent.UPDATE_KILLER_PLAYER_RATING,
+                evt -> refreshKillerPlayerRateOnTitleBar((Player.Rating) evt.getValue()));
         uiEventOrchestrator.registerListener(UiEvent.STRUCTURE_RESIZED, evt -> pack());
     }
 
@@ -258,7 +260,7 @@ public class MainWindow extends JFrame {
         });
 
         detailPanel.add(serverPanel);
-//        detailPanel.add(killerPanel);
+        detailPanel.add(killerPanel);
 //        detailPanel.add(matchPanel);
         detailPanel.add(statsPanel);
         detailPanel.add(Box.createVerticalGlue());
@@ -373,7 +375,7 @@ public class MainWindow extends JFrame {
         killerInfoContainer.add(killerPlayerRateLabel);
         killerInfoContainer.add(killerPlayerNotesLabel);
         killerInfoContainer.add(killerSubtitleLabel);
-        killerInfoContainer.setVisible(false);
+        killerInfoContainer.setVisible(true);
 
         JLabel timerSeparatorLabel = new JLabel();
         timerSeparatorLabel.setBorder(border);
@@ -396,10 +398,11 @@ public class MainWindow extends JFrame {
         leftContainer.setBackground(UiConstants.COLOR__TITLE_BAR__BG);
         leftContainer.add(appLabel);
 
-        pingLabel = new JLabel("xxx");
+        pingLabel = new JLabel("---");
         pingLabel.setBorder(border);
         pingLabel.setFont(ResourceFactory.getRobotoFont());
         pingLabel.setForeground(Color.WHITE);
+        pingLabel.setVisible(false);
 
         titleBarServerPanel = new JPanel(new FlowLayout(FlowLayout.LEFT, 0, 0));
         titleBarServerPanel.setBackground(UiConstants.COLOR__STATUS_BAR__DISCONNECTED__BG);
@@ -414,11 +417,11 @@ public class MainWindow extends JFrame {
 //        connMsgPanel.add(appLabel);
 //        connMsgPanel.add(separatorLabel);
         connMsgPanel.add(titleBarServerPanel);
-//        connMsgPanel.add(pingLabel);
+        connMsgPanel.add(pingLabel);
 //        connMsgPanel.add(ComponentUtils.createTitleSeparatorLabel());
 //        connMsgPanel.add(connStatusLabel);
         connMsgPanel.add(titleBarInputContainer);
-//        connMsgPanel.add(killerInfoContainer);
+        connMsgPanel.add(killerInfoContainer);
         connMsgPanel.add(titleBarTimerContainer);
         MouseDragListener mouseDragListener = new MouseDragListener(this);
         connMsgPanel.addMouseListener(mouseDragListener);
@@ -585,6 +588,8 @@ public class MainWindow extends JFrame {
         killerInfoContainer.setVisible(false);
 //        titleBarTimerContainer.setVisible(false);
 //        messagePanel.setVisible(false);
+        refreshPingOnTitleBar(-1);
+        pingLabel.setVisible(false);
         showMessage(MSG__LAST_CONNECTION_DURATION + TimeUtil.formatTimeUpToHours(connectionTime), 10000);
 //        serverPanel.refreshClear();
 
@@ -607,6 +612,7 @@ public class MainWindow extends JFrame {
         queueTimer.stop();
 //        connStatusLabel.setText(MSG__STATUS__CONNECTED);
         survivalInputPanel.setVisible(false);
+        titleBarServerPanel.setVisible(true);
         hideMessage();
         pack();
     }
@@ -726,38 +732,54 @@ public class MainWindow extends JFrame {
         }
 
         String msg = server.getCountryCode();
-        String city = server.getCity();
+//        String city = server.getCity();
+//
+//        if (StringUtils.isNotBlank(city)) {
+//            if (city.length() > 17) {
+//                city = city.substring(0, 17) + "...";
+//            }
+//            msg += " - " + city;
+//        }
 
-        if (StringUtils.isNotBlank(city)) {
-            if (city.length() > 17) {
-                city = city.substring(0, 17) + "...";
-            }
-            msg += " - " + city;
-        }
-
-        Integer latency = server.getLatency();
-        if (latency != null) {
-            String pingMsg = "(" + latency + " ms)";
-            if (latency <= 80) {
-                pingLabel.setForeground(Color.BLUE);
-            } else if (latency <= 150) {
-                pingLabel.setForeground(Color.YELLOW);
-            } else {
-                pingLabel.setForeground(Color.RED);
-            }
-            pingLabel.setText(pingMsg);
-            pingLabel.setVisible(true);
-        }
-        else {
-            pingLabel.setVisible(false);
-        }
+//        Integer latency = server.getLatency();
+//        if (latency != null) {
+//            String pingMsg = "(" + latency + " ms)";
+//            if (latency <= 80) {
+//                pingLabel.setForeground(Color.BLUE);
+//            } else if (latency <= 150) {
+//                pingLabel.setForeground(Color.YELLOW);
+//            } else {
+//                pingLabel.setForeground(Color.RED);
+//            }
+//            pingLabel.setText(pingMsg);
+//            pingLabel.setVisible(true);
+//        }
+//        else {
+//            pingLabel.setVisible(false);
+//        }
 
         titleBarServerLabel.setText(msg);
         titleBarServerPanel.setVisible(true);
 
     }
 
+
     public void updatePing(int ping) {
+        refreshPingOnTitleBar(ping);
+    }
+
+    private void refreshPingOnTitleBar(int ping) {
+            String pingMsg = "(" + ping + " ms)";
+            if (ping <= 80) {
+                pingLabel.setForeground(Color.BLUE);
+            } else if (ping <= 150) {
+                pingLabel.setForeground(Color.YELLOW);
+            } else {
+                pingLabel.setForeground(Color.RED);
+            }
+            pingLabel.setText(pingMsg);
+            pingLabel.setVisible(true);
+
         pingLabel.setText((ping < 0 ? "?" : ping) + " ms  |");
     }
 

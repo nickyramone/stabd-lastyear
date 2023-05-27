@@ -38,8 +38,8 @@ public class ServerPanel extends JPanel {
     private enum InfoType {
         COUNTRY("Country:"),
         REGION("Region:"),
-        CITY("City:"),
-        LATENCY("Latency:");
+        CITY("City:");
+//        LATENCY("Latency:");
 
         final String description;
 
@@ -98,7 +98,7 @@ public class ServerPanel extends JPanel {
 
 
     private JPanel createTitleBar() {
-        JLabel serverLabel = new JLabel("Server:");
+        JLabel serverLabel = new JLabel("Host location:");
         serverLabel.setBorder(ComponentUtils.DEFAULT_BORDER);
         serverLabel.setForeground(UiConstants.COLOR__TITLE_BAR__FG);
         serverLabel.setFont(font);
@@ -138,7 +138,7 @@ public class ServerPanel extends JPanel {
         container.setLayout(new BoxLayout(container, BoxLayout.X_AXIS));
         container.add(serverLabel);
         container.add(summaryLabel);
-        container.add(geoLocationLabel);
+//        container.add(geoLocationLabel);
         container.add(Box.createHorizontalGlue());
 
         return container;
@@ -146,7 +146,7 @@ public class ServerPanel extends JPanel {
 
     private JPanel createDetailsPanel() {
         detailsPanel = new NameValueInfoPanel();
-        detailsPanel.setSizes(WIDTH__INFO_PANEL__NAME_COLUMN, WIDTH__INFO_PANEL__VALUE_COLUMN, 100);
+        detailsPanel.setSizes(WIDTH__INFO_PANEL__NAME_COLUMN, WIDTH__INFO_PANEL__VALUE_COLUMN, 80);
         detailsPanel.addFields(InfoType.class);
 
         JPanel container = new JPanel();
@@ -184,7 +184,7 @@ public class ServerPanel extends JPanel {
         setServerValue(InfoType.COUNTRY, server.getCountry());
         setServerValue(InfoType.REGION, server.getRegion());
         setServerValue(InfoType.CITY, server.getCity());
-        setServerValue(InfoType.LATENCY, server.getLatency() != null ? server.getLatency() + " ms" : "?");
+//        setServerValue(InfoType.LATENCY, server.getLatency() != null ? server.getLatency() + " ms" : "?");
     }
 
     public void refreshClear() {
@@ -194,7 +194,7 @@ public class ServerPanel extends JPanel {
         setServerValue(InfoType.COUNTRY, null);
         setServerValue(InfoType.REGION, null);
         setServerValue(InfoType.CITY, null);
-        setServerValue(InfoType.LATENCY, null);
+//        setServerValue(InfoType.LATENCY, null);
         uiEventOrchestrator.fireEvent(UiEventOrchestrator.UiEvent.SERVER_INFO_UPDATED);
     }
 

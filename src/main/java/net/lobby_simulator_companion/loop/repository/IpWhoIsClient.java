@@ -86,7 +86,7 @@ public class IpWhoIsClient implements ServerDao {
                 .region(dto.getRegion())
                 .latitude(dto.getLatitude())
                 .longitude(dto.getLongitude())
-                .isp(dto.getConnection().getIsp())
+                .isp(dto.getConnection() != null? dto.getConnection().getIsp(): null)
                 .build();
     }
 

@@ -56,6 +56,7 @@ public abstract class AbstractAggregateStatsPanel<G extends Enum<G>, A extends A
         KILL_2S("2-kills"),
         KILL_3S("3-kills"),
         KILL_4S("4-kills"),
+        KILL_5S("5-kills"),
         KILL_RATE("Kill rate");
 //        MAP_RANDOMNESS("Map variation"),
 //        KILLER_VARIABILITY("Killer variation");
@@ -205,6 +206,7 @@ public abstract class AbstractAggregateStatsPanel<G extends Enum<G>, A extends A
         setStatValue(StatType.KILL_2S, String.valueOf(stats.getKill2s()));
         setStatValue(StatType.KILL_3S, String.valueOf(stats.getKill3s()));
         setStatValue(StatType.KILL_4S, String.valueOf(stats.getKill4s()));
+        setStatValue(StatType.KILL_5S, String.valueOf(stats.getKill5s()));
 
         setStatValue(StatType.SURVIVAL_PROBABILITY, stats.getMatchesSubmitted() == 0 ?
                 MSG__NOT_AVAILABLE :
